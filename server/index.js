@@ -9,7 +9,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = 3131
 
+// Persist target to disk so it survives restarts
+import { readFileSync, writeFileSync } from 'fs'
+const TARGET_FILE = join(__dirname, '.target')
 let targetUrl = ''
+try { targetUrl = readFileSync(TARGET_FILE, 'utf-8').trim() } catch {}
+function saveTarget(url) {
+  targetUrl = url
+  try { writeFileSync(TARGET_FILE, url) } catch {}
+}
 
 app.use(cors())
 app.use(express.json())
@@ -26,7 +34,7 @@ app.get('/ojito-bridge.js', (req, res) => {
 // API
 app.get('/api/status', (req, res) => res.json({ ok: true }))
 app.post('/api/target', (req, res) => {
-  targetUrl = req.body.url || ''
+  saveTarget(req.body.url || '')
   res.json({ ok: true, url: targetUrl })
 })
 app.get('/api/target', (req, res) => res.json({ url: targetUrl }))
