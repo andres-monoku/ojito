@@ -6,6 +6,15 @@ const fab = document.getElementById('fab')
 
 let inspecting = false
 
+function showIframeBlank(msg) {
+  iframe.removeAttribute('src')
+  iframe.srcdoc = '<html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#1a1a22;color:#555;font-family:system-ui,sans-serif;font-size:14px;text-align:center;padding:20px;">' + msg + '</body></html>'
+}
+
+function showError(msg) {
+  elementInfo.innerHTML = '<div style="color:#f97316;font-size:12px;padding:4px 0;">' + msg + '</div>'
+}
+
 // Load target URL from server
 async function loadTarget() {
   try {
@@ -14,34 +23,41 @@ async function loadTarget() {
     if (data.url) {
       urlInput.value = data.url
       loadUrl(data.url)
+    } else {
+      showIframeBlank('Ejecuta /ojito en Claude Code para cargar tu proyecto')
     }
   } catch (e) {
-    // Server not ready yet
+    showIframeBlank('Ejecuta /ojito en Claude Code para cargar tu proyecto')
   }
 }
 
-function loadUrl(url) {
+async function loadUrl(url) {
   if (!url) return
   if (!url.startsWith('http')) url = 'http://' + url
   urlInput.value = url
-  iframe.src = url
 
-  // Inject bridge after iframe loads
+  // Verify server is reachable before loading
+  try {
+    await fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(2000) })
+  } catch {
+    showIframeBlank('No hay servidor activo en ' + url)
+    showError('No hay servidor activo en ' + url)
+    return
+  }
+
+  // Save target to server so proxy knows where to forward
+  await fetch('/api/target', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  })
+
+  // Load through proxy — same origin, bridge auto-injected by server
+  iframe.removeAttribute('srcdoc')
+  iframe.src = '/proxy/'
+
   iframe.onload = function () {
-    try {
-      const doc = iframe.contentDocument || iframe.contentWindow.document
-      const existing = doc.querySelector('script[data-ojito-bridge]')
-      if (!existing) {
-        const s = doc.createElement('script')
-        s.src = window.location.origin + '/ojito-bridge.js'
-        s.dataset.ojitoBridge = ''
-        doc.head.appendChild(s)
-      }
-    } catch (e) {
-      console.warn('Ojito: cannot inject bridge (cross-origin)')
-    }
-
-    // If already inspecting, re-activate bridge in new page
+    // If already inspecting, activate bridge in new page
     if (inspecting) {
       setTimeout(function () {
         try {
@@ -49,6 +65,11 @@ function loadUrl(url) {
         } catch (e) {}
       }, 200)
     }
+  }
+
+  iframe.onerror = function () {
+    showIframeBlank('Error al cargar ' + url)
+    showError('Error al cargar ' + url)
   }
 }
 
