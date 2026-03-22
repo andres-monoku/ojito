@@ -5,71 +5,78 @@ const elementInfo = document.getElementById('element-info')
 const fab = document.getElementById('fab')
 
 let inspecting = false
+let currentTargetUrl = ''
 
-function showIframeBlank(msg) {
-  iframe.removeAttribute('src')
-  iframe.srcdoc = '<html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#1a1a22;color:#555;font-family:system-ui,sans-serif;font-size:14px;text-align:center;padding:20px;">' + msg + '</body></html>'
+function showStatus(msg) {
+  if (!msg) {
+    elementInfo.innerHTML = '<span class="empty-state">Haz click en cualquier elemento</span>'
+    return
+  }
+  elementInfo.innerHTML = '<div style="color:#888;font-size:12px;padding:4px 0;">' + msg + '</div>'
 }
 
-function showError(msg) {
-  elementInfo.innerHTML = '<div style="color:#f97316;font-size:12px;padding:4px 0;">' + msg + '</div>'
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms))
 }
 
-// Load target URL from server
-async function loadTarget() {
+// Fetch target from server and load it
+async function init() {
   try {
     const res = await fetch('/api/target')
     const data = await res.json()
     if (data.url) {
       urlInput.value = data.url
-      loadUrl(data.url)
+      await loadTarget(data.url)
     } else {
-      showIframeBlank('Ejecuta /ojito en Claude Code para cargar tu proyecto')
+      iframe.src = 'about:blank'
+      showStatus('Ejecuta /ojito en Claude Code para cargar tu proyecto')
     }
   } catch (e) {
-    showIframeBlank('Ejecuta /ojito en Claude Code para cargar tu proyecto')
+    iframe.src = 'about:blank'
+    showStatus('Ejecuta /ojito en Claude Code para cargar tu proyecto')
   }
 }
 
-async function loadUrl(url) {
+async function loadTarget(url) {
   if (!url) return
   if (!url.startsWith('http')) url = 'http://' + url
   urlInput.value = url
+  currentTargetUrl = url
 
-  // Verify server is reachable before loading
-  try {
-    await fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(2000) })
-  } catch {
-    showIframeBlank('No hay servidor activo en ' + url)
-    showError('No hay servidor activo en ' + url)
-    return
-  }
+  // 1. Clear iframe
+  iframe.src = 'about:blank'
+  showStatus('Conectando con ' + url + '...')
 
-  // Save target to server so proxy knows where to forward
-  await fetch('/api/target', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url })
-  })
-
-  // Load through proxy — same origin, bridge auto-injected by server
-  iframe.removeAttribute('srcdoc')
-  iframe.src = '/proxy/'
-
-  iframe.onload = function () {
-    // If already inspecting, activate bridge in new page
-    if (inspecting) {
-      setTimeout(function () {
-        try {
-          iframe.contentWindow.postMessage({ type: 'ojito-activate' }, '*')
-        } catch (e) {}
-      }, 200)
+  // 2. Wait for server to respond (max 10 attempts)
+  let ready = false
+  for (let i = 0; i < 10; i++) {
+    try {
+      await fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(1000) })
+      ready = true
+      break
+    } catch {
+      await sleep(1000)
     }
   }
 
-  iframe.onerror = function () {
-    showIframeBlank('Error al cargar ' + url)
-    showError('Error al cargar ' + url)
+  // 3. Only load if server responded
+  if (ready) {
+    iframe.src = url
+    showStatus('')
+
+    iframe.onload = function () {
+      // Re-activate inspection if it was on
+      if (inspecting) {
+        setTimeout(function () {
+          try {
+            iframe.contentWindow.postMessage({ type: 'ojito-activate' }, '*')
+          } catch (e) {}
+        }, 200)
+      }
+    }
+  } else {
+    iframe.src = 'about:blank'
+    showStatus('No se pudo conectar con ' + url)
   }
 }
 
@@ -121,12 +128,12 @@ window.addEventListener('message', function (e) {
 
 // Navigate on Go click or Enter
 goBtn.addEventListener('click', function () {
-  loadUrl(urlInput.value)
+  loadTarget(urlInput.value)
 })
 
 urlInput.addEventListener('keydown', function (e) {
-  if (e.key === 'Enter') loadUrl(urlInput.value)
+  if (e.key === 'Enter') loadTarget(urlInput.value)
 })
 
 // Init
-loadTarget()
+init()
