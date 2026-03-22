@@ -7,25 +7,17 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="layout">
-    <div class="panel-left">
-      <div class="iframe-container">
-        <iframe id="target-iframe"></iframe>
-      </div>
-    </div>
-    <div class="panel-right">
-      <div class="panel-header">
-        <h1>OJITO &#x1F441;</h1>
-      </div>
-      <div class="panel-section">
-        <h2>Elemento seleccionado</h2>
-        <div id="element-info" class="empty-state">
-          Haz click en cualquier elemento
-        </div>
-      </div>
+  <div id="canvas">
+    <iframe id="project-frame"></iframe>
+  </div>
+  <div id="inspector">
+    <div id="inspector-header">OJITO &#x1F441;</div>
+    <div id="inspector-body">
+      <div class="label">ELEMENTO SELECCIONADO</div>
+      <div id="element-info">Haz click en cualquier elemento</div>
     </div>
   </div>
-  <button id="fab" title="Toggle inspector (Ctrl+Shift+X)">&#x1F441;</button>
+  <button id="fab">&#x1F441;</button>
   <script src="app.js"></script>
 </body>
 </html>

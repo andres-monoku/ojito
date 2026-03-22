@@ -1,15 +1,13 @@
-const iframe = document.getElementById('target-iframe')
+const iframe = document.getElementById('project-frame')
 const elementInfo = document.getElementById('element-info')
 const fab = document.getElementById('fab')
 
 let inspecting = false
 
 function showStatus(msg) {
-  if (!msg) {
-    elementInfo.innerHTML = '<span class="empty-state">Haz click en cualquier elemento</span>'
-    return
-  }
-  elementInfo.innerHTML = '<div style="color:#888;font-size:12px;padding:4px 0;">' + msg + '</div>'
+  elementInfo.style.fontStyle = 'italic'
+  elementInfo.style.color = '#555'
+  elementInfo.innerHTML = msg
 }
 
 function sleep(ms) {
@@ -24,11 +22,9 @@ async function init() {
     if (data.url) {
       await loadTarget(data.url)
     } else {
-      iframe.src = 'about:blank'
       showStatus('Ejecuta /ojito en Claude Code para cargar tu proyecto')
     }
   } catch (e) {
-    iframe.src = 'about:blank'
     showStatus('Ejecuta /ojito en Claude Code para cargar tu proyecto')
   }
 }
@@ -36,11 +32,10 @@ async function init() {
 async function loadTarget(url) {
   if (!url) return
 
-  // 1. Clear iframe
   iframe.src = 'about:blank'
   showStatus('Conectando con ' + url + '...')
 
-  // 2. Wait for server to respond (max 10 attempts)
+  // Wait for server to respond (max 10 attempts)
   let ready = false
   for (let i = 0; i < 10; i++) {
     try {
@@ -53,29 +48,21 @@ async function loadTarget(url) {
   }
 
   if (!ready) {
-    iframe.src = 'about:blank'
     showStatus('No se pudo conectar con ' + url)
     return
   }
 
-  // 3. Load through proxy (same-origin, bridge auto-injected by server)
-  // The catch-all in server.js proxies everything not under /app/ or /api/
-  // Loading / in the iframe hits the proxy which forwards to the target root
+  // Load through proxy (same-origin, bridge auto-injected by server)
   iframe.src = window.location.origin + '/'
-  showStatus('')
+  showStatus('Haz click en cualquier elemento')
 
-  // Re-activate inspection on load
   iframe.addEventListener('load', function onLoad() {
     iframe.removeEventListener('load', onLoad)
-    console.log('[ojito] iframe loaded, bridge should be auto-injected by proxy')
     if (inspecting) {
       setTimeout(() => {
         try {
           iframe.contentWindow.postMessage({ type: 'ojito-activate' }, '*')
-          console.log('[ojito] sent activate to iframe')
-        } catch (e) {
-          console.warn('[ojito] postMessage failed', e)
-        }
+        } catch (e) {}
       }, 300)
     }
   })
@@ -85,16 +72,12 @@ async function loadTarget(url) {
 function toggleInspect() {
   inspecting = !inspecting
   fab.classList.toggle('active', inspecting)
-  console.log('[ojito] inspect mode:', inspecting)
 
   try {
     iframe.contentWindow.postMessage({
       type: inspecting ? 'ojito-activate' : 'ojito-deactivate'
     }, '*')
-    console.log('[ojito] sent', inspecting ? 'activate' : 'deactivate', 'to iframe')
-  } catch (e) {
-    console.warn('[ojito] postMessage failed', e)
-  }
+  } catch (e) {}
 }
 
 // FAB click
@@ -111,7 +94,6 @@ document.addEventListener('keydown', function (e) {
 // Listen for messages from bridge in iframe
 window.addEventListener('message', function (e) {
   if (!e.data || e.data.type !== 'ojito-element') return
-  console.log('[ojito] element received:', e.data)
 
   const { tag, className, id } = e.data
   let html = '<div class="element-info">'
@@ -129,6 +111,8 @@ window.addEventListener('message', function (e) {
   }
 
   html += '</div>'
+  elementInfo.style.fontStyle = 'normal'
+  elementInfo.style.color = ''
   elementInfo.innerHTML = html
 })
 
