@@ -110,3 +110,39 @@ html, body {
   background: #2563eb;
   border-color: #3b82f6;
 }
+
+/* Mobile: inspector slides from bottom */
+@media (max-width: 768px) {
+  html, body {
+    flex-direction: column;
+  }
+
+  #canvas {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+  }
+
+  #inspector {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    max-height: 40vh;
+    border-left: none;
+    border-top: 1px solid #1e1e2e;
+    padding: 12px 16px;
+  }
+
+  #inspector-header {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  #fab {
+    bottom: calc(40vh + 12px);
+    left: 12px;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+}

@@ -31,6 +31,25 @@ app.post('/api/target', (req, res) => {
 })
 app.get('/api/target', (req, res) => res.json({ url: targetUrl }))
 
+// Server-side check: verify the target is reachable from this machine
+app.get('/api/check-target', (req, res) => {
+  if (!targetUrl) return res.json({ ok: false, error: 'No target' })
+  const target = new URL(targetUrl)
+  const client = target.protocol === 'https:' ? https : http
+  const check = client.request({
+    hostname: target.hostname,
+    port: target.port || 80,
+    path: '/',
+    method: 'HEAD',
+    timeout: 2000,
+  }, (r) => {
+    res.json({ ok: true, status: r.statusCode })
+  })
+  check.on('error', (e) => res.json({ ok: false, error: e.message }))
+  check.on('timeout', () => { check.destroy(); res.json({ ok: false, error: 'timeout' }) })
+  check.end()
+})
+
 // Root: redirect browser to Ojito UI, but let iframe through
 app.get('/', (req, res, next) => {
   if (req.query._ojito) return next() // iframe request — fall through to proxy

@@ -33,29 +33,28 @@ async function loadTarget(url) {
   if (!url) return
 
   iframe.src = 'about:blank'
-  showStatus('Conectando con ' + url + '...')
+  showStatus('Conectando...')
 
-  // Wait for server to respond (max 10 attempts)
+  // Check target reachability via SERVER (not browser)
+  // This works from mobile because the server runs on the computer
   let ready = false
   for (let i = 0; i < 10; i++) {
     try {
-      await fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(1000) })
-      ready = true
-      break
-    } catch {
-      await sleep(1000)
-    }
+      const res = await fetch('/api/check-target')
+      const data = await res.json()
+      if (data.ok) { ready = true; break }
+    } catch {}
+    await sleep(1000)
   }
 
   if (!ready) {
-    showStatus('No se pudo conectar con ' + url)
+    showStatus('Servidor del proyecto no activo')
     return
   }
 
   // Load through proxy (same-origin, bridge auto-injected by server)
-  // ?_ojito=1 bypasses the root redirect to /app/
   iframe.src = window.location.origin + '/?_ojito=1'
-  showStatus('Haz click en cualquier elemento')
+  showStatus('Toca cualquier elemento')
 
   iframe.addEventListener('load', function onLoad() {
     iframe.removeEventListener('load', onLoad)
