@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ojito</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="panel-left">
+      <div class="url-bar">
+        <input type="text" id="url-input" placeholder="http://localhost:4321">
+        <button id="go-btn">Ir</button>
+      </div>
+      <div class="iframe-container">
+        <iframe id="target-iframe" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+      </div>
+    </div>
+    <div class="panel-right">
+      <div class="panel-header">
+        <h1>OJITO &#x1F441;</h1>
+      </div>
+      <div class="panel-section">
+        <h2>Elemento seleccionado</h2>
+        <div id="element-info" class="empty-state">
+          Haz click en cualquier elemento
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

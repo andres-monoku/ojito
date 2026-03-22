@@ -1,0 +1,151 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0f0f14;
+  color: #e5e7eb;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", Menlo, monospace;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.layout {
+  display: flex;
+  height: 100vh;
+}
+
+/* Left panel — iframe area */
+.panel-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.url-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #1a1a22;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.url-bar input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: #e5e7eb;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+}
+
+.url-bar input:focus {
+  border-color: #3b82f6;
+}
+
+.url-bar button {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.url-bar button:hover {
+  background: #2563eb;
+}
+
+.iframe-container {
+  flex: 1;
+  position: relative;
+}
+
+.iframe-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+
+/* Right panel — inspector */
+.panel-right {
+  width: 280px;
+  min-width: 280px;
+  background: #0f0f14;
+  border-left: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.panel-header {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.panel-header h1 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #fff;
+}
+
+.panel-section {
+  padding: 16px;
+}
+
+.panel-section h2 {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  margin-bottom: 12px;
+}
+
+.element-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.info-label {
+  font-size: 10px;
+  color: #666;
+  text-transform: uppercase;
+  min-width: 40px;
+}
+
+.info-value {
+  font-size: 13px;
+  color: #93c5fd;
+  word-break: break-all;
+}
+
+.info-value.class-value {
+  color: #a5b4fc;
+}
+
+.info-value.id-value {
+  color: #fbbf24;
+}
+
+.empty-state {
+  color: #555;
+  font-size: 12px;
+  font-style: italic;
+  padding: 16px;
+}
