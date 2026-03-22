@@ -64,15 +64,13 @@ Espera 4 segundos y verifica.
 Ejecuta:
 `curl -s -X POST http://localhost:3131/api/target -H "Content-Type: application/json" -d '{"url":"http://localhost:PUERTO"}'`
 
-Obtiene IP con: `ipconfig getifaddr en0` (Mac) o `hostname -I` (Linux)
+Obtiene IP de red con: `ipconfig getifaddr en0` (Mac) o `hostname -I` (Linux)
 
-Muestra:
+Muestra SOLO esto, nada mas:
 ```
-Ojito listo.
-- Ojito:    http://localhost:3131
-- Proyecto: http://localhost:PUERTO
-- Red:      http://IP:3131
-Abre http://localhost:3131 en tu navegador para inspeccionar.
+👁 Ojito listo
+  Desktop: http://localhost:3131
+  Mobile:  http://IP:3131
 ```
 
 ## REGLAS
