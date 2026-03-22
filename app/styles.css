@@ -149,3 +149,35 @@ body {
   font-style: italic;
   padding: 16px;
 }
+
+/* FAB button */
+#fab {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 9999;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(15, 15, 20, 0.85);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  transition: background 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+
+#fab:hover {
+  background: rgba(30, 30, 40, 0.95);
+}
+
+#fab.active {
+  background: #3b82f6;
+  border-color: #60a5fa;
+}

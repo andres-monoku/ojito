@@ -2,6 +2,9 @@ const iframe = document.getElementById('target-iframe')
 const urlInput = document.getElementById('url-input')
 const goBtn = document.getElementById('go-btn')
 const elementInfo = document.getElementById('element-info')
+const fab = document.getElementById('fab')
+
+let inspecting = false
 
 // Load target URL from server
 async function loadTarget() {
@@ -13,7 +16,7 @@ async function loadTarget() {
       loadUrl(data.url)
     }
   } catch (e) {
-    // Server not ready yet, ignore
+    // Server not ready yet
   }
 }
 
@@ -35,11 +38,42 @@ function loadUrl(url) {
         doc.head.appendChild(s)
       }
     } catch (e) {
-      // Cross-origin — bridge can't be injected
       console.warn('Ojito: cannot inject bridge (cross-origin)')
+    }
+
+    // If already inspecting, re-activate bridge in new page
+    if (inspecting) {
+      setTimeout(function () {
+        try {
+          iframe.contentWindow.postMessage({ type: 'ojito-activate' }, '*')
+        } catch (e) {}
+      }, 200)
     }
   }
 }
+
+// Toggle inspection mode
+function toggleInspect() {
+  inspecting = !inspecting
+  fab.classList.toggle('active', inspecting)
+
+  try {
+    iframe.contentWindow.postMessage({
+      type: inspecting ? 'ojito-activate' : 'ojito-deactivate'
+    }, '*')
+  } catch (e) {}
+}
+
+// FAB click
+fab.addEventListener('click', toggleInspect)
+
+// Keyboard shortcut: Ctrl+Shift+X
+document.addEventListener('keydown', function (e) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'X') {
+    e.preventDefault()
+    toggleInspect()
+  }
+})
 
 // Listen for messages from bridge
 window.addEventListener('message', function (e) {
