@@ -1,6 +1,7 @@
 // Ojito Bridge — injected into target iframe
 // Waits for activation message from parent, then tracks clicks/hovers
 ;(function () {
+  console.log('[ojito-bridge] loaded')
   var active = false
   var prev = null
 
@@ -38,6 +39,7 @@
   function activate() {
     active = true
     document.body.style.cursor = 'crosshair'
+    console.log('[ojito-bridge] activated')
   }
 
   function deactivate() {

@@ -21,46 +21,6 @@ body {
   min-width: 0;
 }
 
-.url-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #1a1a22;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-
-.url-bar input {
-  flex: 1;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
-  color: #e5e7eb;
-  font-family: inherit;
-  font-size: 12px;
-  padding: 6px 10px;
-  outline: none;
-}
-
-.url-bar input:focus {
-  border-color: #3b82f6;
-}
-
-.url-bar button {
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.url-bar button:hover {
-  background: #2563eb;
-}
 
 .iframe-container {
   flex: 1;
