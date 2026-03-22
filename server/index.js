@@ -31,8 +31,13 @@ app.post('/api/target', (req, res) => {
 })
 app.get('/api/target', (req, res) => res.json({ url: targetUrl }))
 
-// Reverse proxy for everything else (including /)
-// The iframe loads / which proxies to the target's root
+// Root: redirect browser to Ojito UI, but let iframe through
+app.get('/', (req, res, next) => {
+  if (req.query._ojito) return next() // iframe request — fall through to proxy
+  res.redirect('/app/')
+})
+
+// Reverse proxy for everything else
 // Serves the target project same-origin so we can inject the bridge
 app.use((req, res) => {
   if (!targetUrl) return res.status(502).send('No target configured')

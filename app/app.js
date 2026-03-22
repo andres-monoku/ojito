@@ -53,7 +53,8 @@ async function loadTarget(url) {
   }
 
   // Load through proxy (same-origin, bridge auto-injected by server)
-  iframe.src = window.location.origin + '/'
+  // ?_ojito=1 bypasses the root redirect to /app/
+  iframe.src = window.location.origin + '/?_ojito=1'
   showStatus('Haz click en cualquier elemento')
 
   iframe.addEventListener('load', function onLoad() {
