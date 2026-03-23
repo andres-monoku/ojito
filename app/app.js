@@ -317,6 +317,339 @@ function showToast(msg) {
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 200) }, 2000)
 }
 
+// ── Changes tracking ──
+let pendingChanges = []
+const propsPanel = document.getElementById('props-panel')
+const changesBar = document.getElementById('changes-bar')
+const changesCount = document.getElementById('changes-count')
+const btnSend = document.getElementById('btn-send')
+const btnReset = document.getElementById('btn-reset')
+
+function updateChangesBar() {
+  if (pendingChanges.length > 0) {
+    changesBar.classList.remove('hidden')
+    changesCount.textContent = pendingChanges.length + ' cambio' + (pendingChanges.length > 1 ? 's' : '')
+  } else {
+    changesBar.classList.add('hidden')
+  }
+}
+
+function trackChange(property, oldValue, newValue) {
+  if (!currentElement) return
+  const existing = pendingChanges.findIndex(c => c.property === property && c.xpath === currentElement.xpath)
+  const cls = typeof currentElement.className === 'string' ? currentElement.className.split(' ')[0] : ''
+  const change = {
+    elementName: generateReadableName(currentElement),
+    selector: cls ? '.' + cls : currentElement.tag,
+    xpath: currentElement.xpath,
+    property, oldValue: String(oldValue), newValue: String(newValue)
+  }
+  if (existing >= 0) pendingChanges[existing] = change
+  else pendingChanges.push(change)
+  updateChangesBar()
+}
+
+function applyStyle(property, value) {
+  if (!currentElement) return
+  try {
+    iframe.contentWindow.postMessage({
+      type: 'ojito-apply-style',
+      xpath: currentElement.xpath,
+      property, value
+    }, '*')
+  } catch {}
+}
+
+btnSend.addEventListener('click', () => {
+  if (pendingChanges.length === 0) return
+  let prompt = 'Aplica los siguientes cambios de estilos CSS en el proyecto.\nPara cada elemento, localiza su clase o selector en el codigo fuente y actualiza los valores correspondientes:\n\n'
+  pendingChanges.forEach(c => {
+    prompt += '\u2022 ' + c.elementName + ' (' + c.selector + ')\n  ' + c.property + ': ' + c.oldValue + ' \u2192 ' + c.newValue + '\n\n'
+  })
+  prompt += 'Aplica cada cambio en el archivo CSS o modulo correspondiente. Confirma que archivos modificaste.'
+  navigator.clipboard.writeText(prompt).then(() => {
+    showToast('Prompt copiado \u2014 pegalo en Claude Code')
+    pendingChanges = []
+    updateChangesBar()
+  })
+})
+
+btnReset.addEventListener('click', () => {
+  pendingChanges = []
+  updateChangesBar()
+  // Reload iframe to reset all styles
+  const src = iframe.src
+  iframe.src = 'about:blank'
+  setTimeout(() => { iframe.src = src }, 100)
+})
+
+// ── Render props ──
+function renderProps(styles, hasDirectText) {
+  if (!styles) { propsPanel.innerHTML = ''; return }
+
+  propsPanel.innerHTML = ''
+  const isMob = window.innerWidth < 768
+
+  // Helper: create a numeric slider+input row
+  function numericRow(label, prop, value, min, max, step, unit) {
+    const row = document.createElement('div')
+    row.className = 'prop-row'
+    const lbl = document.createElement('span')
+    lbl.className = 'prop-label'
+    lbl.textContent = label
+    row.appendChild(lbl)
+
+    const ctrl = document.createElement('div')
+    ctrl.className = 'prop-control numeric'
+
+    const slider = document.createElement('input')
+    slider.type = 'range'
+    slider.className = 'slider'
+    slider.min = min; slider.max = max; slider.step = step
+    slider.value = value
+    const pct = ((value - min) / (max - min) * 100)
+    slider.style.setProperty('--progress', pct + '%')
+
+    const numIn = document.createElement('input')
+    numIn.type = 'number'
+    numIn.className = 'num-input'
+    numIn.value = Math.round(value * 100) / 100
+    numIn.min = min; numIn.max = max
+    if (isMob) { numIn.readOnly = true; numIn.style.pointerEvents = 'none' }
+
+    const u = document.createElement('span')
+    u.className = 'prop-unit'
+    u.textContent = unit || 'px'
+
+    const oldVal = value
+    slider.addEventListener('input', () => {
+      numIn.value = slider.value
+      slider.style.setProperty('--progress', ((slider.value - min) / (max - min) * 100) + '%')
+      applyStyle(prop, slider.value + (unit || 'px'))
+    })
+    slider.addEventListener('change', () => {
+      trackChange(prop, oldVal + (unit || 'px'), slider.value + (unit || 'px'))
+    })
+    numIn.addEventListener('change', () => {
+      slider.value = numIn.value
+      slider.style.setProperty('--progress', ((numIn.value - min) / (max - min) * 100) + '%')
+      applyStyle(prop, numIn.value + (unit || 'px'))
+      trackChange(prop, oldVal + (unit || 'px'), numIn.value + (unit || 'px'))
+    })
+
+    ctrl.appendChild(slider)
+    ctrl.appendChild(numIn)
+    ctrl.appendChild(u)
+    row.appendChild(ctrl)
+    return row
+  }
+
+  // Helper: select row
+  function selectRow(label, prop, value, options) {
+    const row = document.createElement('div')
+    row.className = 'prop-row'
+    const lbl = document.createElement('span')
+    lbl.className = 'prop-label'
+    lbl.textContent = label
+    row.appendChild(lbl)
+
+    const sel = document.createElement('select')
+    sel.className = 'prop-select'
+    options.forEach(opt => {
+      const o = document.createElement('option')
+      o.value = opt; o.textContent = opt
+      if (opt === value) o.selected = true
+      sel.appendChild(o)
+    })
+    const oldVal = value
+    sel.addEventListener('change', () => {
+      applyStyle(prop, sel.value)
+      trackChange(prop, oldVal, sel.value)
+    })
+    row.appendChild(sel)
+    return row
+  }
+
+  // Helper: color row
+  function colorRow(label, prop, value) {
+    const row = document.createElement('div')
+    row.className = 'prop-row'
+    const lbl = document.createElement('span')
+    lbl.className = 'prop-label'
+    lbl.textContent = label
+    row.appendChild(lbl)
+
+    const ctrl = document.createElement('div')
+    ctrl.className = 'color-control'
+    const hex = rgbToHex(value)
+
+    const preview = document.createElement('div')
+    preview.className = 'color-preview'
+    preview.style.background = value
+    const picker = document.createElement('input')
+    picker.type = 'color'
+    picker.value = hex
+    preview.appendChild(picker)
+
+    const hexIn = document.createElement('input')
+    hexIn.type = 'text'
+    hexIn.className = 'color-hex'
+    hexIn.value = hex
+    hexIn.maxLength = 7
+    if (isMob) { hexIn.readOnly = true }
+
+    const oldVal = value
+    picker.addEventListener('input', () => {
+      preview.style.background = picker.value
+      hexIn.value = picker.value
+      applyStyle(prop, picker.value)
+    })
+    picker.addEventListener('change', () => {
+      trackChange(prop, oldVal, picker.value)
+    })
+    hexIn.addEventListener('change', () => {
+      preview.style.background = hexIn.value
+      picker.value = hexIn.value
+      applyStyle(prop, hexIn.value)
+      trackChange(prop, oldVal, hexIn.value)
+    })
+
+    ctrl.appendChild(preview)
+    ctrl.appendChild(hexIn)
+    row.appendChild(ctrl)
+    return row
+  }
+
+  // Helper: spacing grid
+  function spacingRow(label, props, values) {
+    const row = document.createElement('div')
+    row.className = 'prop-row'
+    const lbl = document.createElement('span')
+    lbl.className = 'prop-label'
+    lbl.textContent = label
+    row.appendChild(lbl)
+
+    const grid = document.createElement('div')
+    grid.className = 'spacing-grid'
+    const center = document.createElement('div')
+    center.className = 'spacing-center'
+
+    const dirs = ['Top', 'Right', 'Bottom', 'Left']
+    const inputs = {}
+    dirs.forEach(d => {
+      const inp = document.createElement('input')
+      inp.className = 'spacing-input'
+      inp.value = Math.round(values[d.toLowerCase()] || 0)
+      if (isMob) { inp.readOnly = true }
+      const cssProp = props + d.charAt(0).toUpperCase() + d.slice(1).toLowerCase()
+      const oldVal = inp.value
+      inp.addEventListener('change', () => {
+        applyStyle(cssProp, inp.value + 'px')
+        trackChange(cssProp, oldVal + 'px', inp.value + 'px')
+      })
+      inputs[d] = inp
+    })
+
+    center.appendChild(inputs['Top'])
+    const mid = document.createElement('div')
+    mid.className = 'spacing-middle'
+    const box = document.createElement('div')
+    box.className = 'spacing-box'
+    mid.appendChild(inputs['Left'])
+    mid.appendChild(box)
+    mid.appendChild(inputs['Right'])
+    center.appendChild(mid)
+    center.appendChild(inputs['Bottom'])
+    grid.appendChild(center)
+    row.appendChild(grid)
+    return row
+  }
+
+  function addGroup(title, rows) {
+    if (rows.length === 0) return
+    const group = document.createElement('div')
+    group.className = 'prop-group'
+    const label = document.createElement('div')
+    label.className = 'prop-group-label'
+    label.textContent = title
+    group.appendChild(label)
+    rows.forEach(r => group.appendChild(r))
+    propsPanel.appendChild(group)
+  }
+
+  // Layout
+  const layoutRows = []
+  layoutRows.push(selectRow('display', 'display', styles.display, ['block','flex','grid','inline','inline-flex','inline-block','none']))
+  if (styles.display === 'flex' || styles.display === 'inline-flex') {
+    layoutRows.push(selectRow('direction', 'flexDirection', styles.flexDirection, ['row','column','row-reverse','column-reverse']))
+    layoutRows.push(selectRow('justify', 'justifyContent', styles.justifyContent, ['flex-start','center','flex-end','space-between','space-around','space-evenly']))
+    layoutRows.push(selectRow('align', 'alignItems', styles.alignItems, ['flex-start','center','flex-end','stretch','baseline']))
+    layoutRows.push(selectRow('wrap', 'flexWrap', styles.flexWrap, ['nowrap','wrap','wrap-reverse']))
+    layoutRows.push(numericRow('gap', 'gap', parseFloat(styles.gap) || 0, 0, 100, 1, 'px'))
+  }
+  addGroup('Layout', layoutRows)
+
+  // Spacing
+  const hasSpacing = styles.paddingTop || styles.paddingRight || styles.paddingBottom || styles.paddingLeft || styles.marginTop || styles.marginRight || styles.marginBottom || styles.marginLeft
+  if (hasSpacing || true) { // always show spacing
+    const spacingRows = []
+    spacingRows.push(spacingRow('padding', 'padding', { top: styles.paddingTop, right: styles.paddingRight, bottom: styles.paddingBottom, left: styles.paddingLeft }))
+    spacingRows.push(spacingRow('margin', 'margin', { top: styles.marginTop, right: styles.marginRight, bottom: styles.marginBottom, left: styles.marginLeft }))
+    addGroup('Spacing', spacingRows)
+  }
+
+  // Sizing
+  const sizingRows = []
+  sizingRows.push(numericRow('width', 'width', parseFloat(styles.width) || 0, 0, 2000, 1, 'px'))
+  sizingRows.push(numericRow('height', 'height', parseFloat(styles.height) || 0, 0, 2000, 1, 'px'))
+  addGroup('Tamano', sizingRows)
+
+  // Visual
+  const visualRows = []
+  const bgIsTransparent = !styles.backgroundColor || styles.backgroundColor === 'rgba(0, 0, 0, 0)' || styles.backgroundColor === 'transparent'
+  if (!bgIsTransparent) visualRows.push(colorRow('bg-color', 'backgroundColor', styles.backgroundColor))
+  visualRows.push(numericRow('opacity', 'opacity', parseFloat(styles.opacity) || 1, 0, 1, 0.01, ''))
+  if (styles.borderRadius > 0) visualRows.push(numericRow('radius', 'borderRadius', styles.borderRadius, 0, 100, 1, 'px'))
+  if (styles.boxShadow && styles.boxShadow !== 'none') {
+    const bsRow = document.createElement('div')
+    bsRow.className = 'prop-row'
+    const bsLbl = document.createElement('span')
+    bsLbl.className = 'prop-label'
+    bsLbl.textContent = 'shadow'
+    bsRow.appendChild(bsLbl)
+    const bsIn = document.createElement('input')
+    bsIn.className = 'text-input'
+    bsIn.value = styles.boxShadow
+    bsIn.addEventListener('change', () => {
+      applyStyle('boxShadow', bsIn.value)
+      trackChange('boxShadow', styles.boxShadow, bsIn.value)
+    })
+    bsRow.appendChild(bsIn)
+    visualRows.push(bsRow)
+  }
+  if (visualRows.length > 0) addGroup('Visual', visualRows)
+
+  // Typography
+  if (hasDirectText) {
+    const typoRows = []
+    typoRows.push(colorRow('color', 'color', styles.color))
+    typoRows.push(numericRow('size', 'fontSize', styles.fontSize, 8, 96, 1, 'px'))
+    typoRows.push(selectRow('weight', 'fontWeight', styles.fontWeight, ['100','200','300','400','500','600','700','800','900']))
+    const lh = parseFloat(styles.lineHeight) || 1.5
+    typoRows.push(numericRow('line-h', 'lineHeight', lh, 0.8, 3, 0.1, ''))
+    typoRows.push(numericRow('spacing', 'letterSpacing', parseFloat(styles.letterSpacing) || 0, -5, 20, 0.5, 'px'))
+    addGroup('Tipografia', typoRows)
+  }
+}
+
+function rgbToHex(rgb) {
+  if (!rgb || rgb === 'transparent') return '#000000'
+  if (rgb.startsWith('#')) return rgb
+  const m = rgb.match(/\d+/g)
+  if (!m || m.length < 3) return '#000000'
+  return '#' + m.slice(0, 3).map(n => parseInt(n).toString(16).padStart(2, '0')).join('')
+}
+
 // ── Render tree ──
 function renderTree(element, children) {
   treeContainer.innerHTML = ''
@@ -517,6 +850,7 @@ window.addEventListener('message', function (e) {
 
   renderElementInfo(element)
   renderTree(element, children || [])
+  renderProps(e.data.styles, e.data.hasDirectText)
 
   if (isMobile) showMobileSheet()
 })

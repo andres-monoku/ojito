@@ -50,10 +50,39 @@
     var elData = getElementData(el, 50)
     elData.xpath = getXPath(el)
 
+    // Computed styles
+    var computed = window.getComputedStyle(el)
+    var v = function(p) { return computed.getPropertyValue(p).trim() }
+    var n = function(p) { return parseFloat(v(p)) || 0 }
+    var styles = {
+      display: v('display'), flexDirection: v('flex-direction'),
+      justifyContent: v('justify-content'), alignItems: v('align-items'),
+      flexWrap: v('flex-wrap'), gap: v('gap'),
+      paddingTop: n('padding-top'), paddingRight: n('padding-right'),
+      paddingBottom: n('padding-bottom'), paddingLeft: n('padding-left'),
+      marginTop: n('margin-top'), marginRight: n('margin-right'),
+      marginBottom: n('margin-bottom'), marginLeft: n('margin-left'),
+      width: v('width'), height: v('height'),
+      minWidth: v('min-width'), maxWidth: v('max-width'),
+      minHeight: v('min-height'), maxHeight: v('max-height'),
+      backgroundColor: v('background-color'), color: v('color'),
+      opacity: v('opacity'), borderRadius: n('border-radius'),
+      borderWidth: n('border-width'), borderStyle: v('border-style'),
+      borderColor: v('border-color'), boxShadow: v('box-shadow'),
+      fontSize: n('font-size'), fontWeight: v('font-weight'),
+      lineHeight: v('line-height'), letterSpacing: v('letter-spacing'),
+      textAlign: v('text-align'), textTransform: v('text-transform')
+    }
+    var hasDirectText = Array.from(el.childNodes).some(function(nd) {
+      return nd.nodeType === 3 && nd.textContent.trim().length > 0
+    })
+
     window.parent.postMessage({
       type: 'ojito-element',
       element: elData,
-      children: children
+      children: children,
+      styles: styles,
+      hasDirectText: hasDirectText
     }, '*')
   }
 
@@ -69,6 +98,10 @@
       prev.style.outline = prev._ojitoPrev || ''
       prev = null
     }
+  }
+
+  function getElementByXpath(xpath) {
+    return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
   }
 
   function getXPath(el) {
@@ -88,6 +121,11 @@
     if (!e.data) return
     if (e.data.type === 'ojito-activate') activate()
     if (e.data.type === 'ojito-deactivate') deactivate()
+    if (e.data.type === 'ojito-apply-style') {
+      var target = getElementByXpath(e.data.xpath)
+      if (target) target.style[e.data.property] = e.data.value
+      return
+    }
     if (e.data.type === 'ojito-get-context') {
       var context = {
         title: document.title || '',
