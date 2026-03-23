@@ -390,7 +390,7 @@ function renderProps(styles, hasDirectText) {
   propsPanel.innerHTML = ''
   const isMob = window.innerWidth < 768
 
-  // Helper: create a numeric slider+input row
+  // Helper: stepper row (replaces slider)
   function numericRow(label, prop, value, min, max, step, unit) {
     const row = document.createElement('div')
     row.className = 'prop-row'
@@ -400,45 +400,58 @@ function renderProps(styles, hasDirectText) {
     row.appendChild(lbl)
 
     const ctrl = document.createElement('div')
-    ctrl.className = 'prop-control numeric'
+    ctrl.className = 'prop-control stepper'
 
-    const slider = document.createElement('input')
-    slider.type = 'range'
-    slider.className = 'slider'
-    slider.min = min; slider.max = max; slider.step = step
-    slider.value = value
-    const pct = ((value - min) / (max - min) * 100)
-    slider.style.setProperty('--progress', pct + '%')
+    const minus = document.createElement('button')
+    minus.className = 'step-btn minus'
+    minus.textContent = '\u2212'
+    minus.dataset.prop = prop
+    minus.dataset.step = step
 
-    const numIn = document.createElement('input')
-    numIn.type = 'number'
-    numIn.className = 'num-input'
-    numIn.value = Math.round(value * 100) / 100
-    numIn.min = min; numIn.max = max
-    if (isMob) { numIn.readOnly = true; numIn.style.pointerEvents = 'none' }
+    const valSpan = document.createElement('span')
+    valSpan.className = 'step-value'
+    valSpan.textContent = Math.round(value * 100) / 100
+
+    const plus = document.createElement('button')
+    plus.className = 'step-btn plus'
+    plus.textContent = '+'
+    plus.dataset.prop = prop
+    plus.dataset.step = step
 
     const u = document.createElement('span')
     u.className = 'prop-unit'
     u.textContent = unit || 'px'
 
     const oldVal = value
-    slider.addEventListener('input', () => {
-      numIn.value = slider.value
-      slider.style.setProperty('--progress', ((slider.value - min) / (max - min) * 100) + '%')
-      applyStyle(prop, slider.value + (unit || 'px'))
-    })
-    slider.addEventListener('change', () => {
-      trackChange(prop, oldVal + (unit || 'px'), slider.value + (unit || 'px'))
-    })
-    numIn.addEventListener('change', () => {
-      slider.value = numIn.value
-      slider.style.setProperty('--progress', ((numIn.value - min) / (max - min) * 100) + '%')
-      applyStyle(prop, numIn.value + (unit || 'px'))
-      trackChange(prop, oldVal + (unit || 'px'), numIn.value + (unit || 'px'))
-    })
+    function doStep(delta) {
+      let cur = parseFloat(valSpan.textContent) || 0
+      let next = Math.round((cur + delta) * 100) / 100
+      next = Math.max(min, Math.min(max, next))
+      valSpan.textContent = next
+      const cssVal = unit ? next + unit : String(next)
+      applyStyle(prop, cssVal)
+      trackChange(prop, (unit ? oldVal + unit : String(oldVal)), cssVal)
+    }
 
-    ctrl.appendChild(slider)
-    ctrl.appendChild(numIn)
+    minus.addEventListener('click', (e) => { e.preventDefault(); doStep(-step) })
+    plus.addEventListener('click', (e) => { e.preventDefault(); doStep(step) })
+
+    // Hold to repeat
+    let holdT, holdI
+    function startHold(delta) {
+      holdT = setTimeout(() => { holdI = setInterval(() => doStep(delta), 60) }, 400)
+    }
+    function stopHold() { clearTimeout(holdT); clearInterval(holdI) }
+    minus.addEventListener('mousedown', () => startHold(-step))
+    plus.addEventListener('mousedown', () => startHold(step))
+    minus.addEventListener('touchstart', () => startHold(-step), { passive: true })
+    plus.addEventListener('touchstart', () => startHold(step), { passive: true })
+    document.addEventListener('mouseup', stopHold)
+    document.addEventListener('touchend', stopHold)
+
+    ctrl.appendChild(minus)
+    ctrl.appendChild(valSpan)
+    ctrl.appendChild(plus)
     ctrl.appendChild(u)
     row.appendChild(ctrl)
     return row
@@ -589,14 +602,17 @@ function renderProps(styles, hasDirectText) {
   }
   addGroup('Layout', layoutRows)
 
-  // Spacing
-  const hasSpacing = styles.paddingTop || styles.paddingRight || styles.paddingBottom || styles.paddingLeft || styles.marginTop || styles.marginRight || styles.marginBottom || styles.marginLeft
-  if (hasSpacing || true) { // always show spacing
-    const spacingRows = []
-    spacingRows.push(spacingRow('padding', 'padding', { top: styles.paddingTop, right: styles.paddingRight, bottom: styles.paddingBottom, left: styles.paddingLeft }))
-    spacingRows.push(spacingRow('margin', 'margin', { top: styles.marginTop, right: styles.marginRight, bottom: styles.marginBottom, left: styles.marginLeft }))
-    addGroup('Spacing', spacingRows)
-  }
+  // Spacing — individual steppers
+  const spacingRows = []
+  spacingRows.push(numericRow('pad-T', 'paddingTop', styles.paddingTop, 0, 500, 1, 'px'))
+  spacingRows.push(numericRow('pad-R', 'paddingRight', styles.paddingRight, 0, 500, 1, 'px'))
+  spacingRows.push(numericRow('pad-B', 'paddingBottom', styles.paddingBottom, 0, 500, 1, 'px'))
+  spacingRows.push(numericRow('pad-L', 'paddingLeft', styles.paddingLeft, 0, 500, 1, 'px'))
+  spacingRows.push(numericRow('mrg-T', 'marginTop', styles.marginTop, -500, 500, 1, 'px'))
+  spacingRows.push(numericRow('mrg-R', 'marginRight', styles.marginRight, -500, 500, 1, 'px'))
+  spacingRows.push(numericRow('mrg-B', 'marginBottom', styles.marginBottom, -500, 500, 1, 'px'))
+  spacingRows.push(numericRow('mrg-L', 'marginLeft', styles.marginLeft, -500, 500, 1, 'px'))
+  addGroup('Spacing', spacingRows)
 
   // Sizing
   const sizingRows = []

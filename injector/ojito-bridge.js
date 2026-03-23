@@ -101,18 +101,26 @@
   }
 
   function getElementByXpath(xpath) {
-    return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+    try {
+      return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+    } catch (err) {
+      return null
+    }
   }
 
   function getXPath(el) {
+    if (el.id) return '//*[@id="' + el.id + '"]'
     var parts = []
     var node = el
     while (node && node.nodeType === 1) {
       var idx = 1
-      var sib = node.previousElementSibling
-      while (sib) { idx++; sib = sib.previousElementSibling }
+      var sib = node.previousSibling
+      while (sib) {
+        if (sib.nodeType === 1 && sib.tagName === node.tagName) idx++
+        sib = sib.previousSibling
+      }
       parts.unshift(node.tagName.toLowerCase() + '[' + idx + ']')
-      node = node.parentElement
+      node = node.parentNode
     }
     return '/' + parts.join('/')
   }
@@ -123,7 +131,9 @@
     if (e.data.type === 'ojito-deactivate') deactivate()
     if (e.data.type === 'ojito-apply-style') {
       var target = getElementByXpath(e.data.xpath)
-      if (target) target.style[e.data.property] = e.data.value
+      if (!target) { console.warn('Ojito: element not found for', e.data.xpath); return }
+      var cssProp = e.data.property.replace(/([A-Z])/g, '-$1').toLowerCase()
+      target.style.setProperty(cssProp, e.data.value, 'important')
       return
     }
     if (e.data.type === 'ojito-get-context') {

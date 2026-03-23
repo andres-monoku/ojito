@@ -494,31 +494,31 @@ html, body {
   min-width: 72px; flex-shrink: 0;
 }
 .prop-control { display: flex; align-items: center; gap: 6px; flex: 1; }
-.prop-control.numeric { display: flex; align-items: center; gap: 6px; flex: 1; }
+.prop-control.stepper { display: flex; align-items: center; gap: 4px; }
 
-.slider {
-  flex: 1; height: 3px; -webkit-appearance: none; appearance: none;
-  background: linear-gradient(to right,
-    var(--slider-fill) 0%, var(--slider-fill) var(--progress, 50%),
-    var(--slider-track) var(--progress, 50%));
-  border-radius: 2px; cursor: pointer; outline: none;
+.step-btn {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--bg-hover); border: 1px solid var(--border);
+  color: var(--text-secondary); font-size: 14px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center;
+  justify-content: center; user-select: none;
+  transition: all 100ms ease; flex-shrink: 0;
 }
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 12px; height: 12px;
-  border-radius: 50%; background: var(--slider-thumb);
-  border: 2px solid var(--bg-base);
-  box-shadow: 0 0 0 1px var(--input-border); cursor: grab;
+.step-btn:hover {
+  background: var(--bg-selected); border-color: var(--border-focus);
+  color: var(--text-primary);
 }
-
-.num-input {
-  width: 42px; background: var(--input-bg);
+.step-btn:active {
+  background: var(--accent-warm); border-color: var(--accent-warm);
+  color: #111110; transform: scale(0.92);
+}
+.step-value {
+  min-width: 32px; text-align: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  color: var(--text-primary); background: var(--input-bg);
   border: 1px solid var(--input-border); border-radius: 6px;
-  color: var(--input-text); font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; text-align: center; padding: 3px 4px;
-  -moz-appearance: textfield; outline: none;
+  padding: 3px 6px; user-select: none;
 }
-.num-input::-webkit-inner-spin-button { display: none; }
-.num-input:focus { border-color: var(--input-border-focus); }
 
 .prop-unit { font-size: 10px; color: var(--text-muted); min-width: 16px; }
 
@@ -548,20 +548,7 @@ html, body {
 }
 .prop-select:focus { border-color: var(--input-border-focus); }
 
-.spacing-grid { display: flex; justify-content: flex-end; }
-.spacing-center { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.spacing-middle { display: flex; align-items: center; gap: 2px; }
-.spacing-box {
-  width: 20px; height: 14px; border: 1px solid var(--border);
-  border-radius: 3px; background: var(--bg-hover);
-}
-.spacing-input {
-  width: 32px; height: 18px; background: var(--input-bg);
-  border: 1px solid var(--input-border); border-radius: 4px;
-  color: var(--input-text); font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; text-align: center; padding: 0; outline: none;
-}
-.spacing-input:focus { border-color: var(--input-border-focus); }
+/* spacing-grid removed — using steppers instead */
 
 .text-input {
   background: var(--input-bg); border: 1px solid var(--input-border);
