@@ -102,22 +102,24 @@ if (mobileFab) {
 // ── Mobile panel show/hide (called from React via window events) ──
 window.addEventListener('ojito-show-panel', () => {
   if (!isMobile) return
-  inspector.classList.add('panel-open')
-  canvas.style.height = '45vh'
+  inspector?.classList.add('panel-open')
+  if (canvas) canvas.style.height = '45vh'
 })
 
 window.addEventListener('ojito-hide-panel', () => {
   if (!isMobile) return
-  inspector.classList.remove('panel-open')
-  canvas.style.height = '100vh'
+  inspector?.classList.remove('panel-open')
+  if (canvas) canvas.style.height = '100vh'
 })
 
 // ── Swipe down to close on mobile ──
 let touchStartY = 0
-inspector.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY }, { passive: true })
-inspector.addEventListener('touchend', (e) => {
-  const delta = e.changedTouches[0].clientY - touchStartY
-  if (delta > 60) window.dispatchEvent(new CustomEvent('ojito-toggle-off'))
-}, { passive: true })
+if (inspector) {
+  inspector.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY }, { passive: true })
+  inspector.addEventListener('touchend', (e) => {
+    const delta = e.changedTouches[0].clientY - touchStartY
+    if (delta > 60) window.dispatchEvent(new CustomEvent('ojito-toggle-off'))
+  }, { passive: true })
+}
 
 init()

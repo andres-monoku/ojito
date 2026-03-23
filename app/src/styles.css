@@ -1,0 +1,71 @@
+/* React panel styles — inherits CSS vars from parent styles.css */
+
+/* Ensure react-panel fills the inspector */
+#react-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Fix overflow on stepper controls */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0; /* allow shrinking */
+}
+
+.step-value {
+  flex: 1;
+  min-width: 0; /* critical: prevents overflow */
+}
+
+/* Unit selector for size properties */
+.unit-select {
+  height: 28px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r1);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 0 2px;
+  cursor: pointer;
+  appearance: none;
+  text-align: center;
+  min-width: 36px;
+  flex-shrink: 0;
+  outline: none;
+}
+.unit-select:focus {
+  border-color: var(--border-focus);
+}
+
+/* Scrollbar styling for the panel body */
+#react-panel > div:nth-child(2) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+}
+#react-panel > div:nth-child(2)::-webkit-scrollbar { width: 4px; }
+#react-panel > div:nth-child(2)::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 2px;
+}
+
+/* Prop row: prevent children from overflowing */
+.prop-row {
+  overflow: hidden;
+}
+
+/* Mobile: larger controls */
+@media (max-width: 767px) {
+  .step-btn { width: 40px; height: 40px; font-size: 20px; }
+  .step-value { height: 40px; font-size: 16px; }
+  .unit-select { height: 40px; font-size: 12px; min-width: 48px; }
+  .prop-select { height: 44px; font-size: 14px; }
+  .prop-row { min-height: 52px; padding: 8px 0; }
+  .color-swatch { width: 40px; height: 40px; }
+  .font-trigger { height: 44px; font-size: 14px; }
+}

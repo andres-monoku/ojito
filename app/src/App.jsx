@@ -5,14 +5,15 @@ import ElementCard from './components/ElementCard'
 import LayersTree from './components/LayersTree'
 import PropsPanel from './components/PropsPanel'
 import ChangesBar from './components/ChangesBar'
+import './styles.css'
 
 export default function App() {
   const { element } = useOjito()
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <Header />
-      <div id="panel-body" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>
         {!element ? (
           <EmptyState />
         ) : (
@@ -35,6 +36,6 @@ export default function App() {
         )}
       </div>
       <ChangesBar />
-    </>
+    </div>
   )
 }
