@@ -152,6 +152,11 @@
     if (!e.data) return
     if (e.data.type === 'ojito-activate') activate()
     if (e.data.type === 'ojito-deactivate') deactivate()
+    if (e.data.type === 'ojito-reselect') {
+      var target = e.data.xpath ? getElementByXpath(e.data.xpath) : prev
+      if (target) selectElement(target)
+      return
+    }
     if (e.data.type === 'ojito-scroll-to-selected') {
       if (!prev) return
       var rect = prev.getBoundingClientRect()

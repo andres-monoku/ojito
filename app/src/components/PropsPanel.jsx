@@ -77,15 +77,27 @@ export default function PropsPanel() {
       {/* Spacing */}
       <SpacingGroup styles={styles} onChange={handleChange} />
 
-      {/* Sizing */}
+      {/* Sizing — read-only display, changes here break responsive */}
       <PropGroup title="TAMAÑO">
         <PropRow label="width">
-          <Stepper prop="width" value={parseFloat(styles.width) || 0} min={0} max={4000} step={1}
-            unit={detectUnit(styles._rawWidth)} onChange={handleChange} />
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: '12px',
+            color: 'var(--text-primary)', padding: '4px 8px',
+            background: 'var(--bg-elevated)', borderRadius: '6px',
+            border: '1px solid var(--border-default)',
+          }}>
+            {styles._rawWidth || styles.width}
+          </span>
         </PropRow>
         <PropRow label="height">
-          <Stepper prop="height" value={parseFloat(styles.height) || 0} min={0} max={4000} step={1}
-            unit={detectUnit(styles._rawHeight)} onChange={handleChange} />
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: '12px',
+            color: 'var(--text-primary)', padding: '4px 8px',
+            background: 'var(--bg-elevated)', borderRadius: '6px',
+            border: '1px solid var(--border-default)',
+          }}>
+            {styles._rawHeight || styles.height}
+          </span>
         </PropRow>
       </PropGroup>
 

@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { useOjito } from '../context/OjitoContext'
 
 const VIEWPORTS = [
-  { id: 'desktop', label: '🖥', title: 'Desktop', width: null },
-  { id: 'tablet', label: '📱', title: 'Tablet (768px)', width: 768 },
-  { id: 'mobile', label: '📱', title: 'Mobile (375px)', width: 375 },
+  { id: 'desktop', label: '🖥', title: 'Desktop (100%)', width: null },
+  { id: 'tablet', label: '⊞', title: 'Tablet (768px)', width: 768 },
+  { id: 'mobile', label: '☐', title: 'Mobile (375px)', width: 375 },
 ]
 
 export default function Header() {
-  const { isActive, toggleInspector } = useOjito()
+  const { isActive, toggleInspector, element } = useOjito()
   const [viewport, setViewport] = useState('desktop')
   const isMobile = window.innerWidth < 768
 
@@ -39,6 +39,16 @@ export default function Header() {
       canvas.style.justifyContent = ''
       canvas.style.padding = ''
     }
+
+    // After viewport change, re-query the selected element
+    // so computed styles update to the new viewport size
+    if (element?.xpath) {
+      setTimeout(() => {
+        iframe.contentWindow?.postMessage({
+          type: 'ojito-reselect', xpath: element.xpath
+        }, '*')
+      }, 400)
+    }
   }
 
   return (
@@ -48,7 +58,6 @@ export default function Header() {
         <span className="brand-name">ojito</span>
       </div>
       <div className="header-actions">
-        {/* Viewport toggle — desktop only */}
         {!isMobile && (
           <div style={{ display: 'flex', gap: '2px', marginRight: '4px' }}>
             {VIEWPORTS.map(vp => (
@@ -58,9 +67,9 @@ export default function Header() {
                 onClick={() => changeViewport(vp)}
                 style={{
                   width: '28px', height: '24px', borderRadius: '4px',
-                  background: viewport === vp.id ? 'var(--accent-dim, rgba(232,184,109,0.12))' : 'transparent',
-                  border: viewport === vp.id ? '1px solid var(--border-focus, #e8b86d)' : '1px solid transparent',
-                  color: viewport === vp.id ? 'var(--accent, #e8b86d)' : 'var(--text-tertiary, #7a7268)',
+                  background: viewport === vp.id ? 'var(--accent-dim)' : 'transparent',
+                  border: viewport === vp.id ? '1px solid var(--border-focus)' : '1px solid transparent',
+                  color: viewport === vp.id ? 'var(--accent)' : 'var(--text-tertiary)',
                   cursor: 'pointer', fontSize: '12px', display: 'flex',
                   alignItems: 'center', justifyContent: 'center', transition: 'all 100ms',
                   padding: 0,
