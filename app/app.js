@@ -835,6 +835,97 @@ function renderProps(styles, hasDirectText) {
 
   // Typography
   if (hasDirectText) {
+    const typoGroup = document.createElement('div')
+    typoGroup.className = 'prop-group'
+    const typoLabel = document.createElement('div')
+    typoLabel.className = 'prop-group-label'
+    typoLabel.textContent = 'Tipografia'
+    typoGroup.appendChild(typoLabel)
+
+    // Font family picker
+    const fontSection = document.createElement('div')
+    fontSection.className = 'font-picker-section'
+    const fontLbl = document.createElement('span')
+    fontLbl.className = 'prop-label'
+    fontLbl.textContent = 'font'
+    fontSection.appendChild(fontLbl)
+
+    const rawFont = styles.fontFamily || ''
+    const cleanFont = rawFont.split(',')[0].trim().replace(/['"]/g, '') || 'system-ui'
+
+    const fontCurrent = document.createElement('div')
+    fontCurrent.className = 'font-current'
+    fontCurrent.innerHTML = '<span class="font-current-name" style="font-family:' + cleanFont + '">' + cleanFont + '</span><span class="font-current-arrow">\u203A</span>'
+
+    const fontPanel = document.createElement('div')
+    fontPanel.className = 'font-panel hidden'
+
+    const searchWrap = document.createElement('div')
+    searchWrap.className = 'font-search-wrap'
+    const searchInput = document.createElement('input')
+    searchInput.type = 'text'
+    searchInput.className = 'font-search'
+    searchInput.placeholder = 'Buscar fuente...'
+    searchWrap.appendChild(searchInput)
+    fontPanel.appendChild(searchWrap)
+
+    const fontListEl = document.createElement('div')
+    fontListEl.className = 'font-list'
+    fontPanel.appendChild(fontListEl)
+
+    const FONTS = [
+      { n: 'Inter', c: 'Sans' }, { n: 'Geist', c: 'Sans' }, { n: 'DM Sans', c: 'Sans' },
+      { n: 'Outfit', c: 'Sans' }, { n: 'Plus Jakarta Sans', c: 'Sans' },
+      { n: 'Helvetica Neue', c: 'Sans' }, { n: 'Arial', c: 'Sans' }, { n: 'system-ui', c: 'Sans' },
+      { n: 'Playfair Display', c: 'Serif' }, { n: 'Lora', c: 'Serif' },
+      { n: 'Merriweather', c: 'Serif' }, { n: 'Georgia', c: 'Serif' },
+      { n: 'Bebas Neue', c: 'Display' }, { n: 'Oswald', c: 'Display' },
+      { n: 'Space Grotesk', c: 'Display' }, { n: 'Syne', c: 'Display' },
+      { n: 'JetBrains Mono', c: 'Mono' }, { n: 'Fira Code', c: 'Mono' }, { n: 'monospace', c: 'Mono' },
+    ]
+
+    function renderFontList(fonts) {
+      fontListEl.innerHTML = ''
+      const cats = {}
+      fonts.forEach(f => { if (!cats[f.c]) cats[f.c] = []; cats[f.c].push(f) })
+      Object.entries(cats).forEach(([cat, items]) => {
+        const catLabel = document.createElement('div')
+        catLabel.className = 'font-category-label'
+        catLabel.textContent = cat
+        fontListEl.appendChild(catLabel)
+        items.forEach(f => {
+          const opt = document.createElement('div')
+          opt.className = 'font-option' + (f.n === cleanFont ? ' selected' : '')
+          opt.innerHTML = '<span class="font-option-preview" style="font-family:\'' + f.n + '\'">' + f.n + '</span>'
+          opt.addEventListener('click', () => {
+            applyStyle('fontFamily', "'" + f.n + "'")
+            trackChange('fontFamily', cleanFont, f.n)
+            fontCurrent.querySelector('.font-current-name').textContent = f.n
+            fontCurrent.querySelector('.font-current-name').style.fontFamily = f.n
+            fontPanel.classList.add('hidden')
+            fontCurrent.classList.remove('open')
+          })
+          fontListEl.appendChild(opt)
+        })
+      })
+    }
+
+    fontCurrent.addEventListener('click', () => {
+      const isOpen = !fontPanel.classList.contains('hidden')
+      fontPanel.classList.toggle('hidden', isOpen)
+      fontCurrent.classList.toggle('open', !isOpen)
+      if (!isOpen) { searchInput.focus(); renderFontList(FONTS) }
+    })
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase()
+      renderFontList(FONTS.filter(f => f.n.toLowerCase().includes(q)))
+    })
+
+    fontSection.appendChild(fontCurrent)
+    fontSection.appendChild(fontPanel)
+    typoGroup.appendChild(fontSection)
+
+    // Other typography controls
     const typoRows = []
     typoRows.push(colorRow('color', 'color', styles.color))
     typoRows.push(numericRow('size', 'fontSize', styles.fontSize, 8, 96, 1, 'px'))
@@ -842,7 +933,9 @@ function renderProps(styles, hasDirectText) {
     const lh = parseFloat(styles.lineHeight) || 1.5
     typoRows.push(numericRow('line-h', 'lineHeight', lh, 0.8, 3, 0.1, ''))
     typoRows.push(numericRow('spacing', 'letterSpacing', parseFloat(styles.letterSpacing) || 0, -5, 20, 0.5, 'px'))
-    addGroup('Tipografia', typoRows)
+    typoRows.forEach(r => typoGroup.appendChild(r))
+
+    propsPanel.appendChild(typoGroup)
   }
 }
 

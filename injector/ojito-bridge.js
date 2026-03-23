@@ -70,6 +70,7 @@
       borderColor: v('border-color'), boxShadow: v('box-shadow'),
       fontSize: n('font-size'), fontWeight: v('font-weight'),
       lineHeight: v('line-height'), letterSpacing: v('letter-spacing'),
+      fontFamily: v('font-family'),
       textAlign: v('text-align'), textTransform: v('text-transform')
     }
     var hasDirectText = Array.from(el.childNodes).some(function(nd) {
