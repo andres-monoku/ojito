@@ -81,6 +81,9 @@ app.use(express.json())
 // Ojito app UI at /app/
 app.use('/app', express.static(join(__dirname, '..', 'app')))
 
+// React panel (built assets)
+app.use('/panel', express.static(join(__dirname, '..', 'public', 'panel')))
+
 // Bridge script
 app.get('/ojito-bridge.js', (req, res) => {
   res.set('Cache-Control', 'no-store')
