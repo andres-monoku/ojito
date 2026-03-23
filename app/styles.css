@@ -434,6 +434,19 @@ html, body {
 
 .suggest-ignore:hover { color: var(--text-secondary); }
 
+.api-key-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  word-break: break-all;
+  line-height: 1.4;
+  margin: 4px 0;
+}
+
 /* ── Toast ── */
 .toast {
   position: absolute;

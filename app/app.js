@@ -147,14 +147,19 @@ async function requestSuggestion(data, chip) {
         className: data.className,
         id: data.id,
         textContent: data.textContent,
-        childCount: data.childCount
+        childCount: data.childCount,
+        xpath: data.xpath || ''
       })
     })
     const result = await res.json()
 
     if (!result.ok) {
-      chip.innerHTML = '<span class="suggest-star">\u2726</span> ' + (result.error || 'Error')
-      chip.style.pointerEvents = 'auto'
+      if (result.error === 'NO_API_KEY') {
+        showApiKeyHelp(chip)
+      } else {
+        chip.innerHTML = '<span class="suggest-star">\u2726</span> ' + (result.error || 'Error')
+        chip.style.pointerEvents = 'auto'
+      }
       return
     }
 
@@ -205,6 +210,44 @@ async function requestSuggestion(data, chip) {
     chip.innerHTML = '<span class="suggest-star">\u2726</span> Sin conexion'
     chip.style.pointerEvents = 'auto'
   }
+}
+
+// ── API key help UI ──
+function showApiKeyHelp(chip) {
+  chip.className = 'suggest-result'
+  chip.style.pointerEvents = 'auto'
+
+  const cmd = 'echo "ANTHROPIC_API_KEY=tu_key_aqui" >> ~/.zshrc && source ~/.zshrc'
+
+  chip.innerHTML = ''
+
+  const title = document.createElement('div')
+  title.className = 'suggest-name'
+  title.innerHTML = '<span class="suggest-star">\u2726</span> Para nombres inteligentes necesito tu API key'
+  chip.appendChild(title)
+
+  const desc = document.createElement('div')
+  desc.className = 'suggest-reason'
+  desc.textContent = 'Agrega esta linea en tu terminal:'
+  chip.appendChild(desc)
+
+  const codeBlock = document.createElement('div')
+  codeBlock.className = 'api-key-code'
+  codeBlock.textContent = cmd
+  chip.appendChild(codeBlock)
+
+  const copyBtn = document.createElement('button')
+  copyBtn.className = 'suggest-accept'
+  copyBtn.textContent = 'Copiar comando'
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(cmd).then(() => {
+      showToast('Comando copiado — pegalo en terminal')
+      copyBtn.textContent = 'Reinicia Ojito con /ojito'
+      copyBtn.style.opacity = '0.6'
+      copyBtn.style.pointerEvents = 'none'
+    })
+  })
+  chip.appendChild(copyBtn)
 }
 
 // ── Toast ──
@@ -361,6 +404,10 @@ async function loadTarget(url) {
 
   iframe.addEventListener('load', function onLoad() {
     iframe.removeEventListener('load', onLoad)
+    // Request site context from bridge
+    setTimeout(() => {
+      try { iframe.contentWindow.postMessage({ type: 'ojito-get-context' }, '*') } catch {}
+    }, 500)
     if (inspecting) {
       setTimeout(() => {
         try { iframe.contentWindow.postMessage({ type: 'ojito-activate' }, '*') } catch {}
@@ -395,7 +442,20 @@ document.addEventListener('keydown', function (e) {
 
 // ── Messages from bridge ──
 window.addEventListener('message', function (e) {
-  if (!e.data || e.data.type !== 'ojito-element') return
+  if (!e.data) return
+
+  // Site context
+  if (e.data.type === 'ojito-context' && e.data.context) {
+    fetch('/api/set-context', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(e.data.context)
+    }).catch(() => {})
+    return
+  }
+
+  // Element selection
+  if (e.data.type !== 'ojito-element') return
   const { element, children } = e.data
   if (!element) return
 

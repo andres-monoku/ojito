@@ -5,21 +5,48 @@ import https from 'https'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { homedir } from 'os'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = 3131
 
-// Load .env manually (no dependency needed)
-const envPath = join(__dirname, '..', '.env')
-if (existsSync(envPath)) {
-  readFileSync(envPath, 'utf-8').split('\n').forEach(line => {
-    const match = line.match(/^\s*([^#=]+?)\s*=\s*(.+?)\s*$/)
-    if (match && !process.env[match[1]]) process.env[match[1]] = match[2]
-  })
+// ── API key lookup (multi-source) ──
+function getAnthropicKey() {
+  // 1. Environment variable
+  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY
+
+  // 2. Search multiple credential files
+  const credPaths = [
+    join(homedir(), '.claude', 'credentials'),
+    join(homedir(), '.claude', 'config.json'),
+    join(__dirname, '..', '.env'),
+  ]
+
+  for (const credPath of credPaths) {
+    try {
+      const content = readFileSync(credPath, 'utf8')
+      // Try JSON
+      try {
+        const json = JSON.parse(content)
+        const key = json.api_key || json.anthropic_api_key || json.ANTHROPIC_API_KEY
+        if (key) return key
+      } catch {
+        // Try .env format (KEY=value)
+        const match = content.match(/ANTHROPIC_API_KEY=(.+)/)
+        if (match) return match[1].trim()
+      }
+    } catch {
+      // File doesn't exist, continue
+    }
+  }
+
+  return null
 }
 
-// Persist target to disk so it survives restarts
+const anthropicKey = getAnthropicKey()
+
+// ── Persist target to disk ──
 const TARGET_FILE = join(__dirname, '.target')
 let targetUrl = ''
 try { targetUrl = readFileSync(TARGET_FILE, 'utf-8').trim() } catch {}
@@ -27,6 +54,9 @@ function saveTarget(url) {
   targetUrl = url
   try { writeFileSync(TARGET_FILE, url) } catch {}
 }
+
+// ── Site context (in-memory, per session) ──
+let siteContext = null
 
 app.use(cors())
 app.use(express.json())
@@ -40,15 +70,18 @@ app.get('/ojito-bridge.js', (req, res) => {
   res.sendFile(join(__dirname, '..', 'injector', 'ojito-bridge.js'))
 })
 
-// API
+// ── API ──
 app.get('/api/status', (req, res) => res.json({ ok: true }))
+
 app.post('/api/target', (req, res) => {
   saveTarget(req.body.url || '')
+  siteContext = null // reset context when target changes
   res.json({ ok: true, url: targetUrl })
 })
+
 app.get('/api/target', (req, res) => res.json({ url: targetUrl }))
 
-// Server-side check: verify the target is reachable from this machine
+// Server-side reachability check
 app.get('/api/check-target', (req, res) => {
   if (!targetUrl) return res.json({ ok: false, error: 'No target' })
   const target = new URL(targetUrl)
@@ -67,26 +100,45 @@ app.get('/api/check-target', (req, res) => {
   check.end()
 })
 
-// Smart name suggestion via Claude API
+// ── Site context ──
+app.post('/api/set-context', (req, res) => {
+  siteContext = req.body || null
+  res.json({ ok: true })
+})
+
+// ── Smart name suggestion ──
 app.post('/api/suggest-name', async (req, res) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = anthropicKey || getAnthropicKey()
   if (!apiKey) {
-    return res.status(500).json({ ok: false, error: 'ANTHROPIC_API_KEY no configurada. Agrega tu key en ~/Documents/ojito/.env' })
+    return res.json({ ok: false, error: 'NO_API_KEY' })
   }
 
-  const { tag, className, id, textContent, childCount } = req.body
+  const { tag, className, id, textContent, childCount, xpath } = req.body
 
-  const systemPrompt = 'Eres el asistente de Ojito, un inspector visual de diseno. Tu tarea es generar nombres claros, cortos y semanticos para elementos HTML. Responde SOLO con un objeto JSON, sin markdown, sin explicaciones.'
-  const userPrompt = `Genera un nombre claro en espanol para este elemento HTML. Debe ser 2-4 palabras maximo, descriptivo, que un disenador no tecnico entienda.
+  const contextBlock = siteContext ? `
+Contexto del sitio:
+- Titulo: ${siteContext.title || '(sin titulo)'}
+- Descripcion: ${siteContext.metaDescription || '(sin descripcion)'}
+- Headings principales: ${(siteContext.h1s || []).join(', ') || '(ninguno)'}
+- Secciones: ${(siteContext.h2s || []).join(', ') || '(ninguna)'}
+- Navegacion: ${(siteContext.navItems || []).join(', ') || '(ninguna)'}
+` : 'No hay contexto disponible del sitio.'
+
+  const systemPrompt = 'Eres el asistente de Ojito, inspector visual de diseno. Generas nombres claros y cortos para elementos HTML basandote en el contexto real del sitio. Responde SOLO con JSON valido, sin markdown.'
+
+  const userPrompt = `${contextBlock}
+
+Genera un nombre claro en espanol para este elemento. Debe ser 2-4 palabras, descriptivo, que un disenador no tecnico entienda facilmente.
 
 Elemento: ${tag}
-Clase: ${className || '(sin clase)'}
-ID: ${id || '(sin id)'}
-Hijos: ${childCount} elementos hijos
-Texto visible: ${textContent || '(sin texto)'}
+Clase CSS: ${className || 'ninguna'}
+ID: ${id || 'ninguno'}
+Hijos directos: ${childCount}
+Texto visible: ${textContent || 'ninguno'}
+Posicion en pagina: ${xpath || 'desconocida'}
 
 Responde con este JSON exacto:
-{"name": "Nombre sugerido", "reason": "Por que este nombre en maximo 8 palabras"}`
+{"name": "Nombre sugerido", "reason": "Razon en maximo 8 palabras"}`
 
   try {
     const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -121,13 +173,13 @@ Responde con este JSON exacto:
   }
 })
 
-// Root: redirect browser to Ojito UI, but let iframe through
+// Root: redirect browser to Ojito UI, let iframe through
 app.get('/', (req, res, next) => {
   if (req.query._ojito) return next()
   res.redirect('/app/')
 })
 
-// Reverse proxy for everything else
+// Reverse proxy
 app.use((req, res) => {
   if (!targetUrl) return res.status(502).send('No target configured')
 
@@ -186,4 +238,5 @@ app.use((req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Ojito corriendo en http://localhost:${PORT}`)
+  console.log(`API key: ${anthropicKey ? 'detectada' : 'no encontrada'}`)
 })

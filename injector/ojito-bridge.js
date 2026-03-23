@@ -47,9 +47,12 @@
       children.push(getElementData(kids[i], 30))
     }
 
+    var elData = getElementData(el, 50)
+    elData.xpath = getXPath(el)
+
     window.parent.postMessage({
       type: 'ojito-element',
-      element: getElementData(el, 50),
+      element: elData,
       children: children
     }, '*')
   }
@@ -68,10 +71,34 @@
     }
   }
 
+  function getXPath(el) {
+    var parts = []
+    var node = el
+    while (node && node.nodeType === 1) {
+      var idx = 1
+      var sib = node.previousElementSibling
+      while (sib) { idx++; sib = sib.previousElementSibling }
+      parts.unshift(node.tagName.toLowerCase() + '[' + idx + ']')
+      node = node.parentElement
+    }
+    return '/' + parts.join('/')
+  }
+
   window.addEventListener('message', function (e) {
     if (!e.data) return
     if (e.data.type === 'ojito-activate') activate()
     if (e.data.type === 'ojito-deactivate') deactivate()
+    if (e.data.type === 'ojito-get-context') {
+      var context = {
+        title: document.title || '',
+        metaDescription: (document.querySelector('meta[name="description"]') || {}).content || '',
+        h1s: Array.from(document.querySelectorAll('h1')).map(function(h) { return h.textContent.trim() }).slice(0, 3),
+        h2s: Array.from(document.querySelectorAll('h2')).map(function(h) { return h.textContent.trim() }).slice(0, 5),
+        navItems: Array.from(document.querySelectorAll('nav a, [role="navigation"] a')).map(function(a) { return a.textContent.trim() }).filter(function(t) { return t.length > 0 }).slice(0, 8),
+        bodyText: (document.body.innerText || '').trim().slice(0, 300)
+      }
+      window.parent.postMessage({ type: 'ojito-context', context: context }, '*')
+    }
   })
 
   document.addEventListener('mouseover', onHover, true)
