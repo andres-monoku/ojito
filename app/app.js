@@ -414,33 +414,27 @@ document.addEventListener('keydown', (e) => {
   input.dispatchEvent(new Event('change'))
 })
 
-// Spacing diagram: click zone-value to edit inline
-let activeSpacingInput = null
+// Spacing chip: click to edit inline
 document.addEventListener('click', (e) => {
-  const zv = e.target.closest('.zone-value')
-  if (!zv) { if (activeSpacingInput) closeSpacingInput(); return }
-  if (activeSpacingInput) closeSpacingInput()
-  const prop = zv.dataset.prop
-  const cur = parseFloat(zv.textContent) || 0
+  const chip = e.target.closest('.spacing-chip')
+  if (!chip || chip.querySelector('input')) return
+  const prop = chip.dataset.prop
+  const current = parseFloat(chip.dataset.value) || 0
+  chip.classList.add('active')
+  chip.textContent = ''
   const inp = document.createElement('input')
   inp.type = 'number'
-  inp.value = cur
-  inp.className = 'zone-value-input'
-  inp.dataset.prop = prop
-  inp.dataset.original = cur
-  // Copy position class
-  ;['top','right','bottom','left'].forEach(cls => { if (zv.classList.contains(cls)) inp.classList.add(cls) })
-  zv.replaceWith(inp)
+  inp.value = current
+  chip.appendChild(inp)
   inp.focus()
   inp.select()
-  activeSpacingInput = inp
   inp.addEventListener('input', () => {
     const val = parseFloat(inp.value) || 0
     applyStyle(prop, val + 'px')
   })
   inp.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') inp.blur()
-    if (ev.key === 'Escape') { inp.value = inp.dataset.original; inp.blur() }
+    if (ev.key === 'Enter') { inp.blur(); return }
+    if (ev.key === 'Escape') { inp.value = current; inp.blur(); return }
     if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') {
       ev.preventDefault()
       const delta = (ev.key === 'ArrowUp' ? 1 : -1) * (ev.shiftKey ? 10 : 1)
@@ -448,22 +442,14 @@ document.addEventListener('click', (e) => {
       inp.dispatchEvent(new Event('input'))
     }
   })
-  inp.addEventListener('blur', () => closeSpacingInput())
+  inp.addEventListener('blur', () => {
+    const val = Math.round(parseFloat(inp.value) || 0)
+    chip.classList.remove('active')
+    chip.dataset.value = val
+    chip.textContent = val
+    applyAndTrack(prop, val + 'px')
+  })
 })
-function closeSpacingInput() {
-  if (!activeSpacingInput) return
-  const prop = activeSpacingInput.dataset.prop
-  const val = parseFloat(activeSpacingInput.value) || 0
-  applyStyle(prop, val + 'px')
-  trackChange(prop, '', val + 'px')
-  const posClass = ['top','right','bottom','left'].find(c => activeSpacingInput.classList.contains(c)) || ''
-  const div = document.createElement('div')
-  div.className = 'zone-value ' + posClass
-  div.dataset.prop = prop
-  div.textContent = Math.round(val)
-  activeSpacingInput.replaceWith(div)
-  activeSpacingInput = null
-}
 
 btnReset.addEventListener('click', () => {
   pendingChanges = []
@@ -765,34 +751,41 @@ function renderProps(styles, hasDirectText) {
   }
   addGroup('Layout', layoutRows)
 
-  // Spacing — visual Webflow-style editor
+  // Spacing — visual diagram
+  const m = { top: Math.round(styles.marginTop)||0, right: Math.round(styles.marginRight)||0, bottom: Math.round(styles.marginBottom)||0, left: Math.round(styles.marginLeft)||0 }
+  const p = { top: Math.round(styles.paddingTop)||0, right: Math.round(styles.paddingRight)||0, bottom: Math.round(styles.paddingBottom)||0, left: Math.round(styles.paddingLeft)||0 }
   const spacingGroup = document.createElement('div')
   spacingGroup.className = 'prop-group'
-  const spacingLabel = document.createElement('div')
-  spacingLabel.className = 'prop-group-title'
-  spacingLabel.textContent = 'Spacing'
-  spacingGroup.appendChild(spacingLabel)
-
-  const diagram = document.createElement('div')
-  diagram.className = 'spacing-diagram'
-  const marginVals = { Top: styles.marginTop, Right: styles.marginRight, Bottom: styles.marginBottom, Left: styles.marginLeft }
-  const paddingVals = { Top: styles.paddingTop, Right: styles.paddingRight, Bottom: styles.paddingBottom, Left: styles.paddingLeft }
-
-  diagram.innerHTML = '<div class="spacing-zone margin-zone">' +
-    '<span class="zone-label">margin</span>' +
-    Object.entries(marginVals).map(([d, v]) =>
-      '<div class="zone-value ' + d.toLowerCase() + '" data-prop="margin' + d + '">' + Math.round(v) + '</div>'
-    ).join('') +
-    '<div class="spacing-zone padding-zone">' +
-      '<span class="zone-label">padding</span>' +
-      Object.entries(paddingVals).map(([d, v]) =>
-        '<div class="zone-value ' + d.toLowerCase() + '" data-prop="padding' + d + '">' + Math.round(v) + '</div>'
-      ).join('') +
-      '<div class="element-box"><span class="element-box-label">elemento</span></div>' +
-    '</div>' +
-  '</div>'
-
-  spacingGroup.appendChild(diagram)
+  spacingGroup.innerHTML = '<div class="prop-group-title">ESPACIADO</div>' +
+    '<div class="spacing-diagram">' +
+      '<div class="spacing-zone margin-zone">' +
+        '<span class="spacing-zone-label">margin</span>' +
+        '<div class="spacing-zone-row">' +
+          '<div class="spacing-chip" data-prop="marginTop" data-value="' + m.top + '">' + m.top + '</div>' +
+        '</div>' +
+        '<div class="spacing-zone-middle">' +
+          '<div class="spacing-chip" data-prop="marginLeft" data-value="' + m.left + '">' + m.left + '</div>' +
+          '<div class="spacing-zone padding-zone">' +
+            '<span class="spacing-zone-label">padding</span>' +
+            '<div class="spacing-zone-row">' +
+              '<div class="spacing-chip" data-prop="paddingTop" data-value="' + p.top + '">' + p.top + '</div>' +
+            '</div>' +
+            '<div class="spacing-zone-middle">' +
+              '<div class="spacing-chip" data-prop="paddingLeft" data-value="' + p.left + '">' + p.left + '</div>' +
+              '<div class="spacing-element"><span class="spacing-element-label">elemento</span></div>' +
+              '<div class="spacing-chip" data-prop="paddingRight" data-value="' + p.right + '">' + p.right + '</div>' +
+            '</div>' +
+            '<div class="spacing-zone-row">' +
+              '<div class="spacing-chip" data-prop="paddingBottom" data-value="' + p.bottom + '">' + p.bottom + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="spacing-chip" data-prop="marginRight" data-value="' + m.right + '">' + m.right + '</div>' +
+        '</div>' +
+        '<div class="spacing-zone-row">' +
+          '<div class="spacing-chip" data-prop="marginBottom" data-value="' + m.bottom + '">' + m.bottom + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>'
   propsPanel.appendChild(spacingGroup)
 
   // Sizing
@@ -890,8 +883,24 @@ function renderProps(styles, hasDirectText) {
           const opt = document.createElement('div')
           opt.className = 'font-option' + (f.n === cleanFont ? ' selected' : '')
           opt.innerHTML = '<span class="font-option-preview" style="font-family:\'' + f.n + '\'">' + f.n + '</span>'
-          opt.addEventListener('click', () => {
-            applyStyle('fontFamily', "'" + f.n + "'")
+          opt.addEventListener('click', async () => {
+            // Inject Google Font into iframe first
+            try {
+              const doc = iframe.contentDocument
+              if (doc) {
+                const linkId = 'ojito-gf-' + f.n.replace(/\s+/g, '_')
+                if (!doc.getElementById(linkId)) {
+                  const link = doc.createElement('link')
+                  link.id = linkId
+                  link.rel = 'stylesheet'
+                  link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.n) + ':wght@400;500;600;700&display=swap'
+                  doc.head.appendChild(link)
+                  await new Promise(r => { link.onload = r; setTimeout(r, 2000) })
+                }
+              }
+            } catch (e) { console.warn('Ojito: font inject failed', e) }
+            const fontVal = "'" + f.n + "', sans-serif"
+            applyStyle('fontFamily', fontVal)
             trackChange('fontFamily', cleanFont, f.n)
             fontCurrent.querySelector('.font-current-name').textContent = f.n
             fontCurrent.querySelector('.font-current-name').style.fontFamily = f.n
