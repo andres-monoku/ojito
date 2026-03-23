@@ -4,6 +4,7 @@ import OpacitySlider from './controls/OpacitySlider'
 import ColorPicker from './controls/ColorPicker'
 import SelectControl from './controls/SelectControl'
 import FontPicker from './controls/FontPicker'
+import SizingControl from './controls/SizingControl'
 import SpacingGroup from './SpacingGroup'
 
 function detectUnit(rawValue) {
@@ -77,28 +78,18 @@ export default function PropsPanel() {
       {/* Spacing */}
       <SpacingGroup styles={styles} onChange={handleChange} />
 
-      {/* Sizing — read-only display, changes here break responsive */}
+      {/* Sizing — Figma-style Hug/Fill/Fixed */}
       <PropGroup title="TAMAÑO">
-        <PropRow label="width">
-          <span style={{
-            fontFamily: 'var(--font-mono)', fontSize: '12px',
-            color: 'var(--text-primary)', padding: '4px 8px',
-            background: 'var(--bg-elevated)', borderRadius: '6px',
-            border: '1px solid var(--border-default)',
-          }}>
-            {styles._rawWidth || styles.width}
-          </span>
-        </PropRow>
-        <PropRow label="height">
-          <span style={{
-            fontFamily: 'var(--font-mono)', fontSize: '12px',
-            color: 'var(--text-primary)', padding: '4px 8px',
-            background: 'var(--bg-elevated)', borderRadius: '6px',
-            border: '1px solid var(--border-default)',
-          }}>
-            {styles._rawHeight || styles.height}
-          </span>
-        </PropRow>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>width</div>
+            <SizingControl prop="width" rawValue={styles._rawWidth} computedValue={styles.width} onChange={handleChange} />
+          </div>
+          <div>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>height</div>
+            <SizingControl prop="height" rawValue={styles._rawHeight} computedValue={styles.height} onChange={handleChange} />
+          </div>
+        </div>
       </PropGroup>
 
       {/* Visual — always show all controls */}
