@@ -13,38 +13,55 @@ const PORT = 3131
 
 // ── API key lookup (multi-source) ──
 function getAnthropicKey() {
-  // 1. Environment variable
-  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY
-
-  // 2. Search multiple credential files
-  const credPaths = [
-    join(homedir(), '.claude', 'credentials'),
-    join(homedir(), '.claude', 'config.json'),
-    join(__dirname, '..', '.env'),
-  ]
-
-  for (const credPath of credPaths) {
-    try {
-      const content = readFileSync(credPath, 'utf8')
-      // Try JSON
-      try {
-        const json = JSON.parse(content)
-        const key = json.api_key || json.anthropic_api_key || json.ANTHROPIC_API_KEY
-        if (key) return key
-      } catch {
-        // Try .env format (KEY=value)
-        const match = content.match(/ANTHROPIC_API_KEY=(.+)/)
-        if (match) return match[1].trim()
-      }
-    } catch {
-      // File doesn't exist, continue
-    }
+  if (process.env.ANTHROPIC_API_KEY) {
+    console.log('Ojito: API key desde variable de entorno')
+    return process.env.ANTHROPIC_API_KEY
   }
 
+  const paths = [
+    join(homedir(), '.claude', 'credentials'),
+    join(homedir(), '.claude', '.credentials'),
+    join(homedir(), '.config', 'claude', 'credentials'),
+    join(homedir(), '.claude', 'config.json'),
+    join(homedir(), '.config', 'claude', 'config.json'),
+    join(__dirname, '..', '.env'),
+    join(homedir(), '.env'),
+  ]
+
+  for (const p of paths) {
+    if (!existsSync(p)) continue
+    try {
+      const raw = readFileSync(p, 'utf8').trim()
+      if (raw.startsWith('{')) {
+        const json = JSON.parse(raw)
+        const key = json.api_key || json.anthropic_api_key || json.ANTHROPIC_API_KEY || json.claudeApiKey
+        if (key && key.startsWith('sk-ant-')) {
+          console.log('Ojito: API key desde', p)
+          return key
+        }
+      }
+      const lines = raw.split('\n')
+      for (const line of lines) {
+        const match = line.match(/^ANTHROPIC_API_KEY\s*=\s*["']?(.+?)["']?\s*$/)
+        if (match && match[1].startsWith('sk-ant-')) {
+          console.log('Ojito: API key desde', p)
+          return match[1]
+        }
+        if (line.trim().startsWith('sk-ant-')) {
+          console.log('Ojito: API key desde', p)
+          return line.trim()
+        }
+      }
+    } catch {}
+  }
+
+  console.warn('Ojito: No se encontro API key')
   return null
 }
 
 const anthropicKey = getAnthropicKey()
+if (anthropicKey) console.log('Ojito: Naming inteligente activado')
+else console.log('Ojito: Sin API key — naming desactivado')
 
 // ── Persist target to disk ──
 const TARGET_FILE = join(__dirname, '.target')

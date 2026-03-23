@@ -368,10 +368,45 @@ btnSend.addEventListener('click', () => {
   })
   prompt += 'Aplica cada cambio en el archivo CSS o modulo correspondiente. Confirma que archivos modificaste.'
   navigator.clipboard.writeText(prompt).then(() => {
-    showToast('Prompt copiado \u2014 pegalo en Claude Code')
+    document.getElementById('send-modal').classList.remove('hidden')
     pendingChanges = []
     updateChangesBar()
   })
+})
+
+// Send modal close
+document.getElementById('send-modal-close').addEventListener('click', () => {
+  document.getElementById('send-modal').classList.add('hidden')
+})
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') document.getElementById('send-modal').classList.add('hidden')
+})
+
+// Step-value input: direct edit + arrow keys
+document.addEventListener('change', (e) => {
+  const input = e.target.closest('.step-value')
+  if (!input || !input.dataset.prop) return
+  const prop = input.dataset.prop
+  let val = parseFloat(input.value) || 0
+  input.value = val
+  const unit = input.closest('.stepper')?.querySelector('.prop-unit')?.textContent || 'px'
+  const cssVal = unit ? val + unit : String(val)
+  applyStyle(prop, cssVal)
+  trackChange(prop, '', cssVal)
+})
+document.addEventListener('keydown', (e) => {
+  const input = e.target.closest('.step-value')
+  if (!input || !input.dataset.prop) return
+  if (e.key === 'Enter') { input.blur(); return }
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+  e.preventDefault()
+  const prop = input.dataset.prop
+  const step = parseFloat(input.step) || 1
+  const mult = e.shiftKey ? 10 : 1
+  const delta = e.key === 'ArrowUp' ? step * mult : -step * mult
+  let cur = parseFloat(input.value) || 0
+  input.value = Math.round((cur + delta) * 100) / 100
+  input.dispatchEvent(new Event('change'))
 })
 
 btnReset.addEventListener('click', () => {
@@ -408,9 +443,12 @@ function renderProps(styles, hasDirectText) {
     minus.dataset.prop = prop
     minus.dataset.step = step
 
-    const valSpan = document.createElement('span')
+    const valSpan = document.createElement('input')
+    valSpan.type = 'number'
     valSpan.className = 'step-value'
-    valSpan.textContent = Math.round(value * 100) / 100
+    valSpan.value = Math.round(value * 100) / 100
+    valSpan.dataset.prop = prop
+    if (window.innerWidth < 768) valSpan.setAttribute('inputmode', 'decimal')
 
     const plus = document.createElement('button')
     plus.className = 'step-btn plus'
@@ -424,10 +462,10 @@ function renderProps(styles, hasDirectText) {
 
     const oldVal = value
     function doStep(delta) {
-      let cur = parseFloat(valSpan.textContent) || 0
+      let cur = parseFloat(valSpan.value) || 0
       let next = Math.round((cur + delta) * 100) / 100
       next = Math.max(min, Math.min(max, next))
-      valSpan.textContent = next
+      valSpan.value = next
       const cssVal = unit ? next + unit : String(next)
       applyStyle(prop, cssVal)
       trackChange(prop, (unit ? oldVal + unit : String(oldVal)), cssVal)
