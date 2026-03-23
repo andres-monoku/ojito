@@ -873,20 +873,39 @@ function showStatus(msg) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 
-// ── Mobile sheet ──
-function showMobileSheet() {
-  if (!isMobile) return
-  inspector.classList.add('visible')
-  canvas.style.height = 'calc(100vh - 200px)'
-  canvas.style.marginTop = '200px'
+// ── Mobile panel ──
+let isPanelVisible = false
+
+function showPanel() {
+  if (window.innerWidth >= 768) return
+  isPanelVisible = true
+  inspector.classList.add('panel-visible')
+  canvas.style.height = '45vh'
+  const mt = document.getElementById('mobile-toggle')
+  if (mt) mt.classList.add('panel-open')
 }
 
-function hideMobileSheet() {
-  if (!isMobile) return
-  inspector.classList.remove('visible')
+function hidePanel() {
+  if (window.innerWidth >= 768) return
+  isPanelVisible = false
+  inspector.classList.remove('panel-visible')
   canvas.style.height = '100vh'
-  canvas.style.marginTop = '0'
+  const mt = document.getElementById('mobile-toggle')
+  if (mt) { mt.classList.remove('panel-open'); mt.textContent = 'Inspeccionar'; mt.classList.remove('inspecting') }
 }
+
+// Swipe down to close panel
+let touchStartY = 0
+inspector.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY }, { passive: true })
+inspector.addEventListener('touchend', (e) => {
+  const delta = e.changedTouches[0].clientY - touchStartY
+  if (delta > 60 && isPanelVisible) {
+    hidePanel()
+    inspecting = false
+    try { iframe.contentWindow.postMessage({ type: 'ojito-deactivate' }, '*') } catch {}
+    setStatus(false)
+  }
+}, { passive: true })
 
 // ── Init ──
 async function init() {
@@ -943,16 +962,24 @@ async function loadTarget(url) {
 // ── Toggle ──
 function toggleInspect() {
   inspecting = !inspecting
-  fab.classList.toggle('active', inspecting)
   setStatus(inspecting)
-
-  if (!inspecting && isMobile) hideMobileSheet()
 
   try {
     iframe.contentWindow.postMessage({
       type: inspecting ? 'ojito-activate' : 'ojito-deactivate'
     }, '*')
   } catch {}
+
+  if (window.innerWidth < 768) {
+    const mt = document.getElementById('mobile-toggle')
+    if (inspecting) {
+      if (mt) { mt.textContent = 'Toca un elemento...'; mt.classList.add('inspecting') }
+    } else {
+      hidePanel()
+    }
+  } else {
+    fab.classList.toggle('active', inspecting)
+  }
 }
 
 fab.addEventListener('click', toggleInspect)
@@ -961,9 +988,14 @@ fab.addEventListener('click', toggleInspect)
 const mobileToggle = document.getElementById('mobile-toggle')
 if (mobileToggle) {
   mobileToggle.addEventListener('click', () => {
-    toggleInspect()
-    mobileToggle.classList.toggle('active', inspecting)
-    mobileToggle.textContent = inspecting ? 'Inspeccionando' : 'Inspeccionar'
+    if (isPanelVisible) {
+      hidePanel()
+      inspecting = false
+      setStatus(false)
+      try { iframe.contentWindow.postMessage({ type: 'ojito-deactivate' }, '*') } catch {}
+    } else {
+      toggleInspect()
+    }
   })
 }
 
@@ -997,7 +1029,7 @@ window.addEventListener('message', function (e) {
   renderTree(element, children || [])
   renderProps(e.data.styles, e.data.hasDirectText)
 
-  if (isMobile) showMobileSheet()
+  if (window.innerWidth < 768 && !isPanelVisible) showPanel()
 })
 
 init()
