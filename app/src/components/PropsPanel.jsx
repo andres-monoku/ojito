@@ -6,6 +6,16 @@ import SelectControl from './controls/SelectControl'
 import FontPicker from './controls/FontPicker'
 import SpacingGroup from './SpacingGroup'
 
+function detectUnit(rawValue) {
+  if (!rawValue || rawValue === 'auto') return 'auto'
+  if (rawValue.includes('%')) return '%'
+  if (rawValue.includes('vw')) return 'vw'
+  if (rawValue.includes('vh')) return 'vh'
+  if (rawValue.includes('rem')) return 'rem'
+  if (rawValue.includes('em')) return 'em'
+  return 'px'
+}
+
 function PropRow({ label, children }) {
   return (
     <div className="prop-row">
@@ -70,10 +80,12 @@ export default function PropsPanel() {
       {/* Sizing */}
       <PropGroup title="TAMAÑO">
         <PropRow label="width">
-          <Stepper prop="width" value={parseFloat(styles.width) || 0} min={0} max={4000} step={1} unit="px" onChange={handleChange} />
+          <Stepper prop="width" value={parseFloat(styles.width) || 0} min={0} max={4000} step={1}
+            unit={detectUnit(styles._rawWidth)} onChange={handleChange} />
         </PropRow>
         <PropRow label="height">
-          <Stepper prop="height" value={parseFloat(styles.height) || 0} min={0} max={4000} step={1} unit="px" onChange={handleChange} />
+          <Stepper prop="height" value={parseFloat(styles.height) || 0} min={0} max={4000} step={1}
+            unit={detectUnit(styles._rawHeight)} onChange={handleChange} />
         </PropRow>
       </PropGroup>
 

@@ -53,6 +53,24 @@
     var computed = window.getComputedStyle(el)
     var v = function(p) { return computed.getPropertyValue(p).trim() }
     var n = function(p) { return parseFloat(v(p)) || 0 }
+    // Try to get the authored CSS value (from matched rules) to preserve units
+    var authored = function(prop) {
+      try {
+        // Check inline style first
+        var inline = el.style.getPropertyValue(prop)
+        if (inline) return inline
+        // Check matched CSS rules
+        var rules = el.ownerDocument.defaultView.getMatchedCSSRules
+          ? el.ownerDocument.defaultView.getMatchedCSSRules(el) : null
+        if (rules) {
+          for (var i = rules.length - 1; i >= 0; i--) {
+            var val = rules[i].style.getPropertyValue(prop)
+            if (val) return val
+          }
+        }
+      } catch(e) {}
+      return ''
+    }
     var styles = {
       display: v('display'), flexDirection: v('flex-direction'),
       justifyContent: v('justify-content'), alignItems: v('align-items'),
@@ -71,7 +89,12 @@
       fontSize: n('font-size'), fontWeight: v('font-weight'),
       lineHeight: v('line-height'), letterSpacing: v('letter-spacing'),
       fontFamily: v('font-family'),
-      textAlign: v('text-align'), textTransform: v('text-transform')
+      textAlign: v('text-align'), textTransform: v('text-transform'),
+      // Raw authored values for size props (to preserve %, vw, vh)
+      _rawWidth: authored('width') || v('width'),
+      _rawHeight: authored('height') || v('height'),
+      _rawMaxWidth: authored('max-width') || v('max-width'),
+      _rawMinHeight: authored('min-height') || v('min-height'),
     }
     var hasDirectText = Array.from(el.childNodes).some(function(nd) {
       return nd.nodeType === 3 && nd.textContent.trim().length > 0
