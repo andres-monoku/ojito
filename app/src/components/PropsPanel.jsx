@@ -4,7 +4,7 @@ import OpacitySlider from './controls/OpacitySlider'
 import ColorPicker from './controls/ColorPicker'
 import SelectControl from './controls/SelectControl'
 import FontPicker from './controls/FontPicker'
-import SizingControl from './controls/SizingControl'
+import LayoutGroup from './LayoutGroup'
 import SpacingGroup from './SpacingGroup'
 
 function detectUnit(rawValue) {
@@ -49,48 +49,11 @@ export default function PropsPanel() {
 
   return (
     <div>
-      {/* Layout */}
-      <PropGroup title="LAYOUT">
-        <PropRow label="display">
-          <SelectControl prop="display" value={styles.display}
-            options={['block','flex','grid','inline','inline-flex','inline-block','none']}
-            onChange={handleChange} />
-        </PropRow>
-        {isFlex && <>
-          <PropRow label="direction">
-            <SelectControl prop="flexDirection" value={styles.flexDirection}
-              options={['row','column','row-reverse','column-reverse']} onChange={handleChange} />
-          </PropRow>
-          <PropRow label="justify">
-            <SelectControl prop="justifyContent" value={styles.justifyContent}
-              options={['flex-start','center','flex-end','space-between','space-around','space-evenly']} onChange={handleChange} />
-          </PropRow>
-          <PropRow label="align">
-            <SelectControl prop="alignItems" value={styles.alignItems}
-              options={['flex-start','center','flex-end','stretch','baseline']} onChange={handleChange} />
-          </PropRow>
-          <PropRow label="gap">
-            <Stepper prop="gap" value={parseFloat(styles.gap) || 0} min={0} max={200} step={1} unit="px" onChange={handleChange} />
-          </PropRow>
-        </>}
-      </PropGroup>
+      {/* Layout + Sizing unified (Figma-style) */}
+      <LayoutGroup styles={styles} onChange={handleChange} />
 
       {/* Spacing */}
       <SpacingGroup styles={styles} onChange={handleChange} />
-
-      {/* Sizing — Figma-style Hug/Fill/Fixed */}
-      <PropGroup title="TAMAÑO">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>width</div>
-            <SizingControl prop="width" rawValue={styles._rawWidth} computedValue={styles.width} onChange={handleChange} />
-          </div>
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>height</div>
-            <SizingControl prop="height" rawValue={styles._rawHeight} computedValue={styles.height} onChange={handleChange} />
-          </div>
-        </div>
-      </PropGroup>
 
       {/* Visual — always show all controls */}
       <PropGroup title="VISUAL">
