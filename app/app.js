@@ -39,36 +39,90 @@ function createTagPill(tag) {
   return pill
 }
 
-// ── Readable name generation ──
-function generateReadableName(data) {
+// ── Readable name generation (text-first priority) ──
+const SEMANTIC_TAGS = {
+  'nav': 'Navegaci\u00f3n', 'header': 'Encabezado', 'footer': 'Pie de p\u00e1gina',
+  'main': 'Contenido principal', 'aside': 'Barra lateral', 'section': 'Secci\u00f3n',
+  'article': 'Art\u00edculo', 'form': 'Formulario', 'button': 'Bot\u00f3n',
+  'img': 'Imagen', 'video': 'Video', 'input': 'Campo de texto',
+  'select': 'Selector', 'textarea': '\u00c1rea de texto', 'ul': 'Lista',
+  'ol': 'Lista numerada', 'li': '\u00cdtem de lista', 'table': 'Tabla', 'figure': 'Figura',
+}
+
+const ROLE_NAMES = {
+  'navigation': 'Navegaci\u00f3n', 'banner': 'Encabezado', 'main': 'Contenido principal',
+  'contentinfo': 'Pie de p\u00e1gina', 'search': 'B\u00fasqueda', 'dialog': 'Ventana de di\u00e1logo',
+  'alert': 'Alerta', 'button': 'Bot\u00f3n',
+}
+
+const SEMANTIC_CLASSES = {
+  'hero': 'Secci\u00f3n hero', 'navbar': 'Barra de navegaci\u00f3n', 'footer': 'Pie de p\u00e1gina',
+  'card': 'Tarjeta', 'modal': 'Modal', 'sidebar': 'Barra lateral', 'banner': 'Banner',
+  'header': 'Encabezado', 'btn': 'Bot\u00f3n', 'logo': 'Logo', 'menu': 'Men\u00fa',
+  'container': 'Contenedor', 'wrapper': 'Contenedor', 'section': 'Secci\u00f3n',
+  'grid': 'Cuadr\u00edcula', 'flex': 'Fila flexible', 'reveal': 'Elemento animado',
+  'overlay': 'Superposici\u00f3n', 'badge': 'Etiqueta', 'chip': 'Chip', 'avatar': 'Avatar',
+  'icon': '\u00cdcono', 'image': 'Imagen', 'slider': 'Carrusel', 'carousel': 'Carrusel',
+  'accordion': 'Acorde\u00f3n', 'tab': 'Pesta\u00f1a', 'tooltip': 'Tooltip',
+  'dropdown': 'Desplegable', 'pagination': 'Paginaci\u00f3n', 'breadcrumb': 'Migas de pan',
+  'progress': 'Progreso', 'spinner': 'Cargando', 'skeleton': 'Esqueleto',
+}
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
+
+function generateReadableName(el) {
   // Check saved names first
-  const key = getElementKey(data)
+  const key = getElementKey(el)
   if (savedNames[key]) return savedNames[key]
 
-  if (data.ariaLabel) return data.ariaLabel
-  if (/^h[1-6]$/.test(data.tag) && data.textContent) {
-    return data.textContent.slice(0, 24) + (data.textContent.length > 24 ? '...' : '')
-  }
-  if (data.role) return data.role.charAt(0).toUpperCase() + data.role.slice(1)
+  const tag = el.tag
+  const text = (el.textContent || '').trim()
+  const className = (typeof el.className === 'string' ? el.className : '') || ''
+  const ariaLabel = el.ariaLabel || ''
+  const role = el.role || ''
+  const id = el.id || ''
 
-  const cls = typeof data.className === 'string' ? data.className.split(' ')[0] : ''
-  const semantic = ['hero','navbar','nav','footer','card','button','modal','sidebar','header','banner','menu','dialog','alert','toast']
-  for (const s of semantic) {
-    if (cls.toLowerCase().includes(s) || (data.id && data.id.toLowerCase().includes(s))) {
-      return s.charAt(0).toUpperCase() + s.slice(1).replace(/[-_]/g, ' ')
+  // P1: aria-label
+  if (ariaLabel) return capitalize(ariaLabel)
+
+  // P2: Visible text
+  if (text.length >= 3 && text.length <= 60) {
+    if (['h1','h2','h3','h4','h5','h6'].includes(tag)) {
+      return text.length > 32 ? text.slice(0, 32) + '\u2026' : text
     }
+    if (['p','span','a','button','label','li'].includes(tag)) {
+      return text.length > 28 ? text.slice(0, 28) + '\u2026' : text
+    }
+    if (text.length <= 20) return text
   }
-  if (data.id && !data.id.match(/^\d+$/) && data.id.length > 2) {
-    return data.id.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+
+  // P3: Role
+  if (role && ROLE_NAMES[role]) return ROLE_NAMES[role]
+
+  // P4: Semantic ID
+  if (id && id.length > 2 && !/^\d+$/.test(id)) {
+    const humanId = id.replace(/[-_]/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
+    if (!humanId.match(/^[0-9\s]+$/)) return capitalize(humanId)
   }
-  if (cls) {
-    const clean = cls.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-    if (clean.length <= 30) return clean
+
+  // P5: Semantic tag
+  if (SEMANTIC_TAGS[tag]) return SEMANTIC_TAGS[tag]
+
+  // P6: Semantic class
+  const classLower = className.toLowerCase()
+  for (const [k, name] of Object.entries(SEMANTIC_CLASSES)) {
+    if (classLower.includes(k)) return name
   }
-  if (data.textContent && data.textContent.length > 0 && data.textContent.length <= 20) {
-    return data.textContent
+
+  // P7: Long text (aggressive truncation)
+  if (text.length > 0) {
+    return text.slice(0, 24) + '\u2026'
   }
-  return data.tag + (data.childCount > 0 ? ' \u00b7 ' + data.childCount : '')
+
+  // Fallback: just the tag
+  return tag
 }
 
 function getElementKey(data) {
@@ -76,15 +130,16 @@ function getElementKey(data) {
 }
 
 // ── Is name confusing? ──
-function isNameConfusing(data) {
-  const { tag, className, id, ariaLabel, role, textContent } = data
-  if (ariaLabel || role) return false
-  if (textContent && textContent.length > 3) return false
-  if (id && !id.match(/^\d+$/) && id.length > 2) return false
-  const cls = typeof className === 'string' ? className.split(' ')[0] : ''
-  const technicalPattern = /^[\d\-_]+$|col-|row-|flex-|grid-|box_|wrapper|inner|outer/i
-  if (cls && technicalPattern.test(cls)) return true
-  if (!cls && !id && (!textContent || textContent.length === 0)) return true
+function isNameConfusing(name, elementData) {
+  // If name contains the actual text, it's fine
+  if (elementData.textContent && name.includes(elementData.textContent.slice(0, 10))) return false
+  // If truncated text, it's fine
+  if (name.endsWith('\u2026')) return false
+  // Vague semantic names
+  const vagueNames = ['Secci\u00f3n', 'Contenedor', 'Elemento animado', 'Fila flexible', 'Cuadr\u00edcula']
+  if (vagueNames.includes(name)) return true
+  // Just a tag name
+  if (['div','span','rect','path','svg','g','circle','line'].includes(name)) return true
   return false
 }
 
@@ -121,7 +176,8 @@ function renderElementInfo(data) {
 
   // Suggestion chip
   const key = getElementKey(data)
-  if (isNameConfusing(data) && !savedNames[key] && !ignoredElements.has(key)) {
+  const readableName = name.textContent
+  if (isNameConfusing(readableName, data) && !savedNames[key] && !ignoredElements.has(key)) {
     const chip = document.createElement('div')
     chip.className = 'suggest-chip'
     chip.innerHTML = '<span class="suggest-star">\u2726</span> Le damos un nombre mas claro?'
