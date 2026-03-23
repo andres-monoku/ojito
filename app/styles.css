@@ -544,6 +544,30 @@ html, body {
   border-color: var(--accent-warm); background: var(--bg-selected);
 }
 
+.step-drum {
+  display: flex; align-items: center; justify-content: center;
+  gap: 3px; background: var(--input-bg);
+  border: 1px solid var(--input-border); border-radius: 8px;
+  padding: 4px 10px; min-width: 56px; cursor: ns-resize;
+  user-select: none; touch-action: none; position: relative;
+  transition: border-color 100ms;
+}
+.step-drum:active { border-color: var(--accent-warm); background: var(--bg-selected); }
+.drum-value {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  font-weight: 600; color: var(--text-primary); min-width: 24px;
+  text-align: right;
+}
+.drum-unit { font-size: 10px; color: var(--text-muted); }
+.drum-edit-input {
+  position: absolute; inset: 0; background: var(--accent-warm);
+  color: #111110; border: none; border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  font-weight: 600; text-align: center; width: 100%;
+  -moz-appearance: textfield; outline: none;
+}
+.drum-edit-input::-webkit-inner-spin-button { display: none; }
+
 .prop-unit { font-size: 10px; color: var(--text-muted); min-width: 16px; }
 
 .color-control { display: flex; align-items: center; gap: 8px; flex: 1; }

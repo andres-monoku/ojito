@@ -503,44 +503,59 @@ function renderProps(styles, hasDirectText) {
     const minus = document.createElement('button')
     minus.className = 'step-btn minus'
     minus.textContent = '\u2212'
-    minus.dataset.prop = prop
-    minus.dataset.step = step
 
-    const valSpan = document.createElement('input')
-    valSpan.type = 'number'
-    valSpan.className = 'step-value'
-    valSpan.value = Math.round(value * 100) / 100
-    valSpan.dataset.prop = prop
-    if (window.innerWidth < 768) valSpan.setAttribute('inputmode', 'decimal')
+    const drum = document.createElement('div')
+    drum.className = 'step-drum'
+    drum.dataset.prop = prop
+    drum.dataset.value = Math.round(value * 100) / 100
+    drum.dataset.min = min
+    drum.dataset.max = max
+    drum.dataset.step = step
+    drum.dataset.unit = unit || 'px'
+    const drumVal = document.createElement('span')
+    drumVal.className = 'drum-value'
+    drumVal.textContent = Math.round(value * 100) / 100
+    const drumUnit = document.createElement('span')
+    drumUnit.className = 'drum-unit'
+    drumUnit.textContent = unit || 'px'
+    drum.appendChild(drumVal)
+    drum.appendChild(drumUnit)
 
     const plus = document.createElement('button')
     plus.className = 'step-btn plus'
     plus.textContent = '+'
-    plus.dataset.prop = prop
-    plus.dataset.step = step
-
-    const u = document.createElement('span')
-    u.className = 'prop-unit'
-    u.textContent = unit || 'px'
 
     const oldVal = value
-    function doStep(delta) {
-      let cur = parseFloat(valSpan.value) || 0
-      let next = Math.round((cur + delta) * 100) / 100
-      next = Math.max(min, Math.min(max, next))
-      valSpan.value = next
-      const cssVal = unit ? next + unit : String(next)
+    function clamp(v) { return Math.max(min, Math.min(max, Math.round(v * 100) / 100)) }
+    function setValue(v) {
+      const clamped = clamp(v)
+      drum.dataset.value = clamped
+      drumVal.textContent = clamped
+      const cssVal = unit ? clamped + unit : String(clamped)
       applyStyle(prop, cssVal)
-      trackChange(prop, (unit ? oldVal + unit : String(oldVal)), cssVal)
+      return clamped
     }
 
-    minus.addEventListener('click', (e) => { e.preventDefault(); doStep(-step) })
-    plus.addEventListener('click', (e) => { e.preventDefault(); doStep(step) })
+    minus.addEventListener('click', (e) => {
+      e.preventDefault()
+      const cur = parseFloat(drum.dataset.value) || 0
+      const nv = setValue(cur - step)
+      trackChange(prop, (unit ? oldVal + unit : String(oldVal)), unit ? nv + unit : String(nv))
+    })
+    plus.addEventListener('click', (e) => {
+      e.preventDefault()
+      const cur = parseFloat(drum.dataset.value) || 0
+      const nv = setValue(cur + step)
+      trackChange(prop, (unit ? oldVal + unit : String(oldVal)), unit ? nv + unit : String(nv))
+    })
 
     // Hold to repeat
     let holdT, holdI
     function startHold(delta) {
-      holdT = setTimeout(() => { holdI = setInterval(() => doStep(delta), 60) }, 400)
+      holdT = setTimeout(() => { holdI = setInterval(() => {
+        const cur = parseFloat(drum.dataset.value) || 0
+        setValue(cur + delta)
+      }, 60) }, 400)
     }
     function stopHold() { clearTimeout(holdT); clearInterval(holdI) }
     minus.addEventListener('mousedown', () => startHold(-step))
@@ -550,10 +565,64 @@ function renderProps(styles, hasDirectText) {
     document.addEventListener('mouseup', stopHold)
     document.addEventListener('touchend', stopHold)
 
+    // Touch drag on drum (mobile swipe up/down)
+    let dragStartY = 0, dragStartVal = 0, dragging = false
+    drum.addEventListener('touchstart', (e) => {
+      e.preventDefault()
+      dragStartY = e.touches[0].clientY
+      dragStartVal = parseFloat(drum.dataset.value) || 0
+      dragging = true
+      drum.style.borderColor = 'var(--accent-warm)'
+    }, { passive: false })
+    drum.addEventListener('touchmove', (e) => {
+      if (!dragging) return
+      e.preventDefault()
+      const deltaY = dragStartY - e.touches[0].clientY
+      const steps = Math.round(deltaY / 8)
+      setValue(dragStartVal + steps * step)
+    }, { passive: false })
+    drum.addEventListener('touchend', () => {
+      if (!dragging) return
+      dragging = false
+      drum.style.borderColor = ''
+      const nv = parseFloat(drum.dataset.value) || 0
+      trackChange(prop, (unit ? oldVal + unit : String(oldVal)), unit ? nv + unit : String(nv))
+    })
+
+    // Double-click on drum to type (desktop)
+    drum.addEventListener('dblclick', () => {
+      const cur = parseFloat(drum.dataset.value) || 0
+      const inp = document.createElement('input')
+      inp.type = 'number'
+      inp.value = cur
+      inp.className = 'drum-edit-input'
+      drum.style.position = 'relative'
+      drum.appendChild(inp)
+      inp.focus()
+      inp.select()
+      inp.addEventListener('input', () => {
+        const v = parseFloat(inp.value)
+        if (!isNaN(v)) setValue(v)
+      })
+      inp.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') inp.blur()
+        if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') {
+          ev.preventDefault()
+          const d = (ev.key === 'ArrowUp' ? 1 : -1) * (ev.shiftKey ? 10 : 1) * step
+          inp.value = clamp(parseFloat(inp.value) + d)
+          inp.dispatchEvent(new Event('input'))
+        }
+      })
+      inp.addEventListener('blur', () => {
+        const nv = parseFloat(drum.dataset.value) || 0
+        trackChange(prop, (unit ? oldVal + unit : String(oldVal)), unit ? nv + unit : String(nv))
+        inp.remove()
+      })
+    })
+
     ctrl.appendChild(minus)
-    ctrl.appendChild(valSpan)
+    ctrl.appendChild(drum)
     ctrl.appendChild(plus)
-    ctrl.appendChild(u)
     row.appendChild(ctrl)
     return row
   }
@@ -1029,7 +1098,12 @@ window.addEventListener('message', function (e) {
   renderTree(element, children || [])
   renderProps(e.data.styles, e.data.hasDirectText)
 
-  if (window.innerWidth < 768 && !isPanelVisible) showPanel()
+  if (window.innerWidth < 768 && !isPanelVisible) {
+    showPanel()
+    setTimeout(() => {
+      try { iframe.contentWindow.postMessage({ type: 'ojito-scroll-to-selected' }, '*') } catch {}
+    }, 400)
+  }
 })
 
 init()

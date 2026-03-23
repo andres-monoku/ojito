@@ -128,6 +128,16 @@
     if (!e.data) return
     if (e.data.type === 'ojito-activate') activate()
     if (e.data.type === 'ojito-deactivate') deactivate()
+    if (e.data.type === 'ojito-scroll-to-selected') {
+      if (!prev) return
+      var rect = prev.getBoundingClientRect()
+      var vh = window.innerHeight
+      var panelH = vh * 0.55
+      if (rect.bottom > vh - panelH) {
+        window.scrollBy({ top: rect.bottom - (vh - panelH) + 40, behavior: 'smooth' })
+      }
+      return
+    }
     if (e.data.type === 'ojito-apply-style') {
       var target = getElementByXpath(e.data.xpath)
       if (!target) { console.warn('Ojito: element not found for', e.data.xpath); return }
