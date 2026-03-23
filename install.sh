@@ -85,3 +85,7 @@ OJITO_CMD
 echo "  ✓ Ojito instalado correctamente"
 echo "    Usa /ojito en Claude Code para activarlo"
 echo ""
+echo "  Opcional: Para sugerencias de nombres con Claude AI,"
+echo "  agrega tu API key en ~/Documents/ojito/.env:"
+echo "  ANTHROPIC_API_KEY=sk-ant-..."
+echo ""
