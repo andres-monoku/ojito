@@ -101,21 +101,17 @@ export default function PropsPanel() {
         </PropRow>
       </PropGroup>
 
-      {/* Visual */}
+      {/* Visual — always show all controls */}
       <PropGroup title="VISUAL">
-        {!bgTransparent && (
-          <PropRow label="bg-color">
-            <ColorPicker prop="backgroundColor" value={styles.backgroundColor} onChange={handleChange} />
-          </PropRow>
-        )}
+        <PropRow label="bg-color">
+          <ColorPicker prop="backgroundColor" value={styles.backgroundColor || 'transparent'} onChange={handleChange} />
+        </PropRow>
         <PropRow label="opacity">
           <OpacitySlider value={styles.opacity} onChange={handleChange} />
         </PropRow>
-        {styles.borderRadius > 0 && (
-          <PropRow label="radius">
-            <Stepper prop="borderRadius" value={styles.borderRadius} min={0} max={200} step={1} unit="px" onChange={handleChange} />
-          </PropRow>
-        )}
+        <PropRow label="radius">
+          <Stepper prop="borderRadius" value={styles.borderRadius || 0} min={0} max={200} step={1} unit="px" onChange={handleChange} />
+        </PropRow>
       </PropGroup>
 
       {/* Typography */}

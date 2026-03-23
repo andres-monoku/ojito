@@ -183,6 +183,61 @@
         navItems: Array.from(document.querySelectorAll('nav a, [role="navigation"] a')).map(function(a) { return a.textContent.trim() }).filter(function(t) { return t.length > 0 }).slice(0, 8),
         bodyText: (document.body.innerText || '').trim().slice(0, 300)
       }
+      // Extract project design tokens: colors and fonts
+      var projectColors = new Set()
+      var projectFonts = new Set()
+      try {
+        // Scan CSS variables from :root
+        var rootStyle = getComputedStyle(document.documentElement)
+        var sheets = document.styleSheets
+        for (var s = 0; s < sheets.length; s++) {
+          try {
+            var rules = sheets[s].cssRules || sheets[s].rules
+            if (!rules) continue
+            for (var r = 0; r < rules.length; r++) {
+              var rule = rules[r]
+              if (!rule.style) continue
+              // Colors
+              var colorProps = ['color', 'background-color', 'border-color', 'fill', 'stroke']
+              for (var ci = 0; ci < colorProps.length; ci++) {
+                var cv = rule.style.getPropertyValue(colorProps[ci])
+                if (cv && cv !== 'inherit' && cv !== 'initial' && cv !== 'transparent' && cv !== 'currentColor') {
+                  projectColors.add(cv.trim())
+                }
+              }
+              // CSS variables that look like colors
+              var cssText = rule.cssText || ''
+              var varMatches = cssText.match(/--[a-zA-Z0-9-]+:\s*(#[0-9a-fA-F]{3,8}|rgb[a]?\([^)]+\))/g)
+              if (varMatches) {
+                for (var vi = 0; vi < varMatches.length; vi++) {
+                  var parts = varMatches[vi].split(':')
+                  if (parts[1]) projectColors.add(parts[1].trim())
+                }
+              }
+              // Fonts
+              var ff = rule.style.getPropertyValue('font-family')
+              if (ff) {
+                ff.split(',').forEach(function(f) {
+                  var clean = f.trim().replace(/['"]/g, '')
+                  if (clean && clean !== 'inherit' && clean !== 'sans-serif' && clean !== 'serif' && clean !== 'monospace' && clean !== 'system-ui')
+                    projectFonts.add(clean)
+                })
+              }
+            }
+          } catch(e) { /* cross-origin sheet */ }
+        }
+        // Also scan loaded Google Fonts links
+        var links = document.querySelectorAll('link[href*="fonts.googleapis.com"]')
+        links.forEach(function(link) {
+          var match = link.href.match(/family=([^&:]+)/g)
+          if (match) match.forEach(function(m) {
+            var name = decodeURIComponent(m.replace('family=', '').replace(/\+/g, ' '))
+            projectFonts.add(name)
+          })
+        })
+      } catch(e) {}
+      context.projectColors = Array.from(projectColors).slice(0, 30)
+      context.projectFonts = Array.from(projectFonts).slice(0, 15)
       window.parent.postMessage({ type: 'ojito-context', context: context }, '*')
     }
   })

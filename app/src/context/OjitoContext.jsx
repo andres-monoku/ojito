@@ -9,6 +9,8 @@ export function OjitoProvider({ children }) {
   const [styles, setStyles] = useState(null)
   const [hasDirectText, setHasDirectText] = useState(false)
   const [pendingChanges, setPendingChanges] = useState([])
+  const [projectColors, setProjectColors] = useState([])
+  const [projectFonts, setProjectFonts] = useState([])
 
   // Listen for toggle events from app.js (keyboard shortcut, mobile FAB)
   useEffect(() => {
@@ -21,6 +23,10 @@ export function OjitoProvider({ children }) {
 
   useEffect(() => {
     function handleMessage(e) {
+      if (e.data?.type === 'ojito-context') {
+        if (e.data.context?.projectColors) setProjectColors(e.data.context.projectColors)
+        if (e.data.context?.projectFonts) setProjectFonts(e.data.context.projectFonts)
+      }
       if (e.data?.type === 'ojito-element') {
         setElement(e.data.element)
         setChildElements(e.data.children || [])
@@ -85,7 +91,8 @@ export function OjitoProvider({ children }) {
       isActive, toggleInspector,
       element, childElements, styles, hasDirectText,
       pendingChanges, trackChange, applyStyle,
-      discardChanges, clearChanges
+      discardChanges, clearChanges,
+      projectColors, projectFonts
     }}>
       {children}
     </OjitoContext.Provider>
