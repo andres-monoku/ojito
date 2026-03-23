@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,10 +11,37 @@
     <iframe id="project-frame"></iframe>
   </div>
   <div id="inspector">
-    <div id="inspector-header">OJITO &#x1F441;</div>
-    <div id="inspector-body">
-      <div class="label">ELEMENTO SELECCIONADO</div>
-      <div id="element-info">Haz click en cualquier elemento</div>
+    <div class="panel-header">
+      <div class="panel-header-title">
+        <span class="icon">&#x1F441;</span>
+        <span>ojito</span>
+      </div>
+      <div class="status-indicator">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">inactivo</span>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="section" id="element-section">
+        <div class="section-label">Elemento</div>
+        <div id="element-info">
+          <div class="empty-state">
+            <span class="empty-icon">&#x1F441;</span>
+            <span class="empty-text">Activa el inspector y
+haz click en un elemento</span>
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="section" id="tree-section">
+        <div class="section-label">Capas</div>
+        <div id="tree-container">
+          <div class="empty-state">
+            <span class="empty-text">El arbol aparece al
+seleccionar un elemento</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <button id="fab">&#x1F441;</button>

@@ -1,14 +1,25 @@
-// Ojito Bridge — injected into target iframe
-// Waits for activation message from parent, then tracks clicks/hovers
+// Ojito Bridge — injected into target iframe via proxy
+// Sends element info + children tree to parent on click
 ;(function () {
-  console.log('[ojito-bridge] loaded')
   var active = false
   var prev = null
+
+  function getElementData(el, maxText) {
+    return {
+      tag: el.tagName.toLowerCase(),
+      className: (typeof el.className === 'string' ? el.className : '') || '',
+      id: el.id || '',
+      ariaLabel: el.getAttribute('aria-label') || '',
+      role: el.getAttribute('role') || '',
+      textContent: (el.textContent || '').trim().slice(0, maxText || 50),
+      childCount: el.children.length
+    }
+  }
 
   function onHover(e) {
     if (!active || e.target === prev) return
     e.target._ojitoPrev = e.target.style.outline
-    e.target.style.outline = '2px solid rgba(59,130,246,0.4)'
+    e.target.style.outline = '2px solid rgba(91,156,246,0.4)'
   }
 
   function onHoverOut(e) {
@@ -25,21 +36,27 @@
 
     var el = e.target
     el._ojitoPrev = el.style.outline
-    el.style.outline = '2px solid #3b82f6'
+    el.style.outline = '2px solid #5b9cf6'
     prev = el
+
+    // Collect children (max 10)
+    var children = []
+    var kids = el.children
+    var max = Math.min(kids.length, 10)
+    for (var i = 0; i < max; i++) {
+      children.push(getElementData(kids[i], 30))
+    }
 
     window.parent.postMessage({
       type: 'ojito-element',
-      tag: el.tagName.toLowerCase(),
-      className: el.classList[0] || '',
-      id: el.id || ''
+      element: getElementData(el, 50),
+      children: children
     }, '*')
   }
 
   function activate() {
     active = true
     document.body.style.cursor = 'crosshair'
-    console.log('[ojito-bridge] activated')
   }
 
   function deactivate() {
@@ -51,14 +68,12 @@
     }
   }
 
-  // Listen for activation from parent
   window.addEventListener('message', function (e) {
     if (!e.data) return
     if (e.data.type === 'ojito-activate') activate()
     if (e.data.type === 'ojito-deactivate') deactivate()
   })
 
-  // Register listeners (they check `active` flag internally)
   document.addEventListener('mouseover', onHover, true)
   document.addEventListener('mouseout', onHoverOut, true)
   document.addEventListener('click', onClick, true)
