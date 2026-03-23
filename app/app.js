@@ -1,11 +1,15 @@
 const iframe = document.getElementById('project-frame')
-const elementInfo = document.getElementById('element-info')
-const treeContainer = document.getElementById('tree-container')
+const elTag = document.getElementById('el-tag')
+const elName = document.getElementById('el-name')
+const elMeta = document.getElementById('el-meta')
+const nameSuggestion = document.getElementById('name-suggestion')
+const layersTree = document.getElementById('layers-tree')
 const fab = document.getElementById('fab')
-const statusDot = document.getElementById('status-dot')
-const statusText = document.getElementById('status-text')
+const statusIndicator = document.getElementById('status-indicator')
 const inspector = document.getElementById('inspector')
 const canvas = document.getElementById('canvas')
+const emptyState = document.getElementById('empty-state')
+const elementContent = document.getElementById('element-content')
 
 let inspecting = false
 let currentElement = null
@@ -146,47 +150,37 @@ function isNameConfusing(name, elementData) {
 // ── Render element info ──
 function renderElementInfo(data) {
   currentElement = data
-  const card = document.createElement('div')
-  card.className = 'element-card'
 
-  const main = document.createElement('div')
-  main.className = 'element-main'
-  main.appendChild(createTagPill(data.tag))
-  const name = document.createElement('span')
-  name.className = 'element-name'
-  name.id = 'current-name'
-  name.textContent = generateReadableName(data)
-  main.appendChild(name)
-  card.appendChild(main)
+  // Show element content, hide empty state
+  emptyState.classList.add('hidden')
+  elementContent.classList.remove('hidden')
 
+  // Tag badge
+  const tagType = getTagType(data.tag)
+  elTag.className = 'tag-badge tag-' + tagType
+  elTag.textContent = data.tag
+
+  // Readable name
+  const readableName = generateReadableName(data)
+  elName.textContent = readableName
+
+  // Meta (class + id)
   const cls = typeof data.className === 'string' ? data.className.split(' ')[0] : ''
-  if (cls) {
-    const classEl = document.createElement('div')
-    classEl.className = 'element-class'
-    classEl.textContent = '.' + cls
-    card.appendChild(classEl)
-  }
-
-  if (data.id) {
-    const idEl = document.createElement('div')
-    idEl.className = 'element-id'
-    idEl.textContent = '#' + data.id
-    card.appendChild(idEl)
-  }
+  let metaText = cls ? '.' + cls : ''
+  if (data.id) metaText += (metaText ? '  ' : '') + '#' + data.id
+  elMeta.textContent = metaText
 
   // Suggestion chip
+  nameSuggestion.innerHTML = ''
+  nameSuggestion.classList.remove('hidden')
   const key = getElementKey(data)
-  const readableName = name.textContent
   if (isNameConfusing(readableName, data) && !savedNames[key] && !ignoredElements.has(key)) {
     const chip = document.createElement('div')
     chip.className = 'suggest-chip'
     chip.innerHTML = '<span class="suggest-star">\u2726</span> Le damos un nombre mas claro?'
     chip.addEventListener('click', () => requestSuggestion(data, chip))
-    card.appendChild(chip)
+    nameSuggestion.appendChild(chip)
   }
-
-  elementInfo.innerHTML = ''
-  elementInfo.appendChild(card)
 }
 
 // ── Request name suggestion from Claude ──
@@ -241,8 +235,7 @@ async function requestSuggestion(data, chip) {
       const key = getElementKey(data)
       savedNames[key] = result.name
       sessionStorage.setItem('ojito-names', JSON.stringify(savedNames))
-      const nameEl = document.getElementById('current-name')
-      if (nameEl) nameEl.textContent = result.name
+      if (elName) elName.textContent = result.name
       chip.remove()
       showToast('Nombre actualizado')
     })
@@ -319,11 +312,11 @@ function showToast(msg) {
 
 // ── Changes tracking ──
 let pendingChanges = []
-const propsPanel = document.getElementById('props-panel')
+const propsPanel = document.getElementById('props-content')
 const changesBar = document.getElementById('changes-bar')
 const changesCount = document.getElementById('changes-count')
 const btnSend = document.getElementById('btn-send')
-const btnReset = document.getElementById('btn-reset')
+const btnReset = document.getElementById('btn-discard')
 
 function updateChangesBar() {
   if (pendingChanges.length > 0) {
@@ -375,7 +368,7 @@ btnSend.addEventListener('click', () => {
 })
 
 // Send modal close
-document.getElementById('send-modal-close').addEventListener('click', () => {
+document.getElementById('modal-close').addEventListener('click', () => {
   document.getElementById('send-modal').classList.add('hidden')
 })
 document.addEventListener('keydown', (e) => {
@@ -753,7 +746,7 @@ function renderProps(styles, hasDirectText) {
     const group = document.createElement('div')
     group.className = 'prop-group'
     const label = document.createElement('div')
-    label.className = 'prop-group-label'
+    label.className = 'prop-group-title'
     label.textContent = title
     group.appendChild(label)
     rows.forEach(r => group.appendChild(r))
@@ -776,7 +769,7 @@ function renderProps(styles, hasDirectText) {
   const spacingGroup = document.createElement('div')
   spacingGroup.className = 'prop-group'
   const spacingLabel = document.createElement('div')
-  spacingLabel.className = 'prop-group-label'
+  spacingLabel.className = 'prop-group-title'
   spacingLabel.textContent = 'Spacing'
   spacingGroup.appendChild(spacingLabel)
 
@@ -838,7 +831,7 @@ function renderProps(styles, hasDirectText) {
     const typoGroup = document.createElement('div')
     typoGroup.className = 'prop-group'
     const typoLabel = document.createElement('div')
-    typoLabel.className = 'prop-group-label'
+    typoLabel.className = 'prop-group-title'
     typoLabel.textContent = 'Tipografia'
     typoGroup.appendChild(typoLabel)
 
@@ -949,43 +942,36 @@ function rgbToHex(rgb) {
 
 // ── Render tree ──
 function renderTree(element, children) {
-  treeContainer.innerHTML = ''
+  layersTree.innerHTML = ''
 
-  if (isMobile) {
-    // Horizontal scroll for mobile
-    const row = document.createElement('div')
-    row.className = 'tree-row-mobile'
-    row.appendChild(createMobilePill(element, true))
-    if (children) {
-      children.slice(0, 8).forEach(child => {
-        row.appendChild(createMobilePill(child, false))
-      })
-    }
-    treeContainer.appendChild(row)
-    return
-  }
+  // Root node as pill
+  const rootNode = createLayerNode(element, true)
+  layersTree.appendChild(rootNode)
 
-  const tree = document.createElement('div')
-  tree.className = 'tree'
-  tree.appendChild(createTreeNode(element, 0, true))
+  // Children as pills
   if (children && children.length > 0) {
-    const childrenWrap = document.createElement('div')
-    childrenWrap.className = 'tree-children'
-    const maxShow = 8
-    children.slice(0, maxShow).forEach((child, i) => {
-      const node = createTreeNode(child, 1, false)
+    children.slice(0, 8).forEach((child, i) => {
+      const node = createLayerNode(child, false)
+      node.style.animation = 'fadeSlideIn 150ms ease-out backwards'
       node.style.animationDelay = (i * 30) + 'ms'
-      childrenWrap.appendChild(node)
+      layersTree.appendChild(node)
     })
-    if (children.length > maxShow) {
-      const more = document.createElement('div')
-      more.className = 'tree-more'
-      more.textContent = '\u00b7\u00b7\u00b7 ' + (children.length - maxShow) + ' mas'
-      childrenWrap.appendChild(more)
-    }
-    tree.appendChild(childrenWrap)
   }
-  treeContainer.appendChild(tree)
+}
+
+function createLayerNode(data, isSelected) {
+  const node = document.createElement('div')
+  node.className = 'layer-node' + (isSelected ? ' selected' : '')
+  const tagType = getTagType(data.tag)
+  const badge = document.createElement('span')
+  badge.className = 'tag-badge tag-' + tagType
+  badge.textContent = data.tag
+  node.appendChild(badge)
+  const name = document.createElement('span')
+  name.className = 'layer-node-name'
+  name.textContent = generateReadableName(data)
+  node.appendChild(name)
+  return node
 }
 
 function createMobilePill(data, isSelected) {
@@ -1024,13 +1010,15 @@ function createTreeNode(data, depth, isSelected) {
 
 // ── Status ──
 function setStatus(active) {
-  statusDot.classList.toggle('active', active)
-  statusText.textContent = active ? 'activo' : 'inactivo'
+  statusIndicator.classList.toggle('active', active)
+  statusIndicator.classList.toggle('inactive', !active)
+  statusIndicator.querySelector('.status-label').textContent = active ? 'activo' : 'inactivo'
 }
 
 function showStatus(msg) {
-  elementInfo.innerHTML = '<div class="empty-state"><span class="empty-icon">&#x1F441;</span><span class="empty-text">' + msg + '</span></div>'
-  treeContainer.innerHTML = '<div class="empty-state"><span class="empty-text">El arbol aparece al\nseleccionar un elemento</span></div>'
+  emptyState.classList.remove('hidden')
+  elementContent.classList.add('hidden')
+  emptyState.querySelector('.empty-desc').innerHTML = msg
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
@@ -1041,19 +1029,23 @@ let isPanelVisible = false
 function showPanel() {
   if (window.innerWidth >= 768) return
   isPanelVisible = true
-  inspector.classList.add('panel-visible')
+  inspector.classList.add('panel-open')
   canvas.style.height = '45vh'
-  const mt = document.getElementById('mobile-toggle')
+  const mt = document.getElementById('mobile-inspect-btn')
   if (mt) mt.classList.add('panel-open')
 }
 
 function hidePanel() {
   if (window.innerWidth >= 768) return
   isPanelVisible = false
-  inspector.classList.remove('panel-visible')
+  inspector.classList.remove('panel-open')
   canvas.style.height = '100vh'
-  const mt = document.getElementById('mobile-toggle')
-  if (mt) { mt.classList.remove('panel-open'); mt.textContent = 'Inspeccionar'; mt.classList.remove('inspecting') }
+  const mt = document.getElementById('mobile-inspect-btn')
+  if (mt) {
+    mt.classList.remove('panel-open', 'inspecting')
+    const lbl = mt.querySelector('.mobile-fab-label')
+    if (lbl) lbl.textContent = 'Inspeccionar'
+  }
 }
 
 // Swipe down to close panel
@@ -1133,9 +1125,13 @@ function toggleInspect() {
   } catch {}
 
   if (window.innerWidth < 768) {
-    const mt = document.getElementById('mobile-toggle')
+    const mt = document.getElementById('mobile-inspect-btn')
     if (inspecting) {
-      if (mt) { mt.textContent = 'Toca un elemento...'; mt.classList.add('inspecting') }
+      if (mt) {
+        mt.classList.add('inspecting')
+        const lbl = mt.querySelector('.mobile-fab-label')
+        if (lbl) lbl.textContent = 'Toca un elemento...'
+      }
     } else {
       hidePanel()
     }
@@ -1147,7 +1143,7 @@ function toggleInspect() {
 fab.addEventListener('click', toggleInspect)
 
 // Mobile toggle button
-const mobileToggle = document.getElementById('mobile-toggle')
+const mobileToggle = document.getElementById('mobile-inspect-btn')
 if (mobileToggle) {
   mobileToggle.addEventListener('click', () => {
     if (isPanelVisible) {

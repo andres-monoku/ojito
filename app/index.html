@@ -2,70 +2,91 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Ojito</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="canvas">
-    <iframe id="project-frame"></iframe>
+    <iframe id="project-frame" title="Preview del proyecto"></iframe>
+    <button id="mobile-inspect-btn" aria-label="Inspeccionar elemento" class="mobile-fab">
+      <span class="eye-icon">&#x1F441;</span>
+      <span class="mobile-fab-label">Inspeccionar</span>
+    </button>
   </div>
-  <div id="inspector">
-    <div class="panel-header">
-      <div class="panel-header-title">
-        <span class="icon">&#x1F441;</span>
-        <span>ojito</span>
+
+  <aside id="inspector" role="complementary" aria-label="Inspector de elementos">
+    <header id="panel-header">
+      <div class="header-brand">
+        <span class="brand-eye">&#x1F441;</span>
+        <span class="brand-name">ojito</span>
       </div>
-      <div class="status-indicator">
-        <span class="status-dot" id="status-dot"></span>
-        <span id="status-text">inactivo</span>
+      <div class="header-actions">
+        <div id="status-indicator" class="status inactive">
+          <span class="status-dot"></span>
+          <span class="status-label">inactivo</span>
+        </div>
+        <button id="fab" class="fab-btn" aria-label="Activar inspector" title="Ctrl+Shift+X">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div id="panel-body">
+      <div id="empty-state" class="empty-state">
+        <div class="empty-eye">&#x1F441;</div>
+        <p class="empty-title">Sin elemento seleccionado</p>
+        <p class="empty-desc">Activa el inspector y toca<br>cualquier elemento</p>
+      </div>
+
+      <div id="element-content" class="hidden">
+        <section class="panel-section" id="section-element">
+          <div class="section-header"><span class="section-label">ELEMENTO</span></div>
+          <div class="element-card">
+            <div class="element-main">
+              <span id="el-tag" class="tag-badge"></span>
+              <span id="el-name" class="el-name"></span>
+            </div>
+            <div id="el-meta" class="el-meta"></div>
+            <div id="name-suggestion"></div>
+          </div>
+        </section>
+        <div class="divider"></div>
+        <section class="panel-section" id="section-layers">
+          <div class="section-header"><span class="section-label">CAPAS</span></div>
+          <div id="layers-tree" class="layers-tree"></div>
+        </section>
+        <div class="divider"></div>
+        <section class="panel-section" id="section-props">
+          <div class="section-header"><span class="section-label">PROPIEDADES</span></div>
+          <div id="props-content"></div>
+        </section>
       </div>
     </div>
-    <div class="panel-body">
-      <div class="section" id="element-section">
-        <div class="section-label">Elemento</div>
-        <div id="element-info">
-          <div class="empty-state">
-            <span class="empty-icon">&#x1F441;</span>
-            <span class="empty-text">Activa el inspector y
-haz click en un elemento</span>
-          </div>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <div class="section" id="tree-section">
-        <div class="section-label">Capas</div>
-        <div id="tree-container">
-          <div class="empty-state">
-            <span class="empty-text">El arbol aparece al
-seleccionar un elemento</span>
-          </div>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <div class="section props-section">
-        <div class="section-label">Propiedades</div>
-        <div id="props-panel"></div>
-      </div>
-    </div>
+
     <div id="changes-bar" class="changes-bar hidden">
-      <span id="changes-count">0 cambios</span>
+      <div class="changes-info"><span id="changes-count" class="changes-count"></span></div>
       <div class="changes-actions">
-        <button id="btn-reset">Descartar</button>
-        <button id="btn-send">Enviar a Claude &#x2192;</button>
+        <button id="btn-discard" class="btn-secondary">Descartar</button>
+        <button id="btn-send" class="btn-primary">Enviar a Claude &#x2192;</button>
       </div>
     </div>
-  </div>
-  <button id="fab">&#x1F441;</button>
-  <button id="mobile-toggle" class="mobile-toggle">Inspeccionar</button>
-  <div id="send-modal" class="send-modal hidden">
-    <div class="send-modal-content">
-      <div class="send-modal-icon">&#x1F4CB;</div>
-      <div class="send-modal-title">Prompt copiado</div>
-      <div class="send-modal-body">Pegalo en Claude Code con <kbd>&#x2318;V</kbd> y Claude aplicara los cambios en tu codigo.</div>
-      <button id="send-modal-close">Entendido</button>
+  </aside>
+
+  <div id="send-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-icon">&#x1F4CB;</div>
+      <h2 class="modal-title">Prompt copiado</h2>
+      <p class="modal-body">P&#233;galo en Claude Code con <kbd>&#x2318;V</kbd><br>y se aplicar&#225;n los cambios en tu c&#243;digo.</p>
+      <button id="modal-close" class="btn-primary btn-full">Entendido</button>
     </div>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>
