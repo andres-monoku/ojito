@@ -382,7 +382,18 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') document.getElementById('send-modal').classList.add('hidden')
 })
 
-// Step-value input: direct edit + arrow keys
+// Step-value: live update while typing (no track yet)
+document.addEventListener('input', (e) => {
+  const input = e.target.closest('.step-value')
+  if (!input || !input.dataset.prop) return
+  const raw = parseFloat(input.value)
+  if (isNaN(raw)) return
+  const prop = input.dataset.prop
+  const unit = input.closest('.stepper')?.querySelector('.prop-unit')?.textContent || 'px'
+  const cssVal = unit ? raw + unit : String(raw)
+  applyStyle(prop, cssVal)
+})
+// Step-value: track final change on blur/change
 document.addEventListener('change', (e) => {
   const input = e.target.closest('.step-value')
   if (!input || !input.dataset.prop) return
@@ -394,20 +405,72 @@ document.addEventListener('change', (e) => {
   applyStyle(prop, cssVal)
   trackChange(prop, '', cssVal)
 })
+// Step-value: arrow keys + Enter
 document.addEventListener('keydown', (e) => {
   const input = e.target.closest('.step-value')
   if (!input || !input.dataset.prop) return
   if (e.key === 'Enter') { input.blur(); return }
   if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
   e.preventDefault()
-  const prop = input.dataset.prop
   const step = parseFloat(input.step) || 1
   const mult = e.shiftKey ? 10 : 1
   const delta = e.key === 'ArrowUp' ? step * mult : -step * mult
   let cur = parseFloat(input.value) || 0
   input.value = Math.round((cur + delta) * 100) / 100
+  input.dispatchEvent(new Event('input'))
   input.dispatchEvent(new Event('change'))
 })
+
+// Spacing diagram: click zone-value to edit inline
+let activeSpacingInput = null
+document.addEventListener('click', (e) => {
+  const zv = e.target.closest('.zone-value')
+  if (!zv) { if (activeSpacingInput) closeSpacingInput(); return }
+  if (activeSpacingInput) closeSpacingInput()
+  const prop = zv.dataset.prop
+  const cur = parseFloat(zv.textContent) || 0
+  const inp = document.createElement('input')
+  inp.type = 'number'
+  inp.value = cur
+  inp.className = 'zone-value-input'
+  inp.dataset.prop = prop
+  inp.dataset.original = cur
+  // Copy position class
+  ;['top','right','bottom','left'].forEach(cls => { if (zv.classList.contains(cls)) inp.classList.add(cls) })
+  zv.replaceWith(inp)
+  inp.focus()
+  inp.select()
+  activeSpacingInput = inp
+  inp.addEventListener('input', () => {
+    const val = parseFloat(inp.value) || 0
+    applyStyle(prop, val + 'px')
+  })
+  inp.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') inp.blur()
+    if (ev.key === 'Escape') { inp.value = inp.dataset.original; inp.blur() }
+    if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') {
+      ev.preventDefault()
+      const delta = (ev.key === 'ArrowUp' ? 1 : -1) * (ev.shiftKey ? 10 : 1)
+      inp.value = (parseFloat(inp.value) || 0) + delta
+      inp.dispatchEvent(new Event('input'))
+    }
+  })
+  inp.addEventListener('blur', () => closeSpacingInput())
+})
+function closeSpacingInput() {
+  if (!activeSpacingInput) return
+  const prop = activeSpacingInput.dataset.prop
+  const val = parseFloat(activeSpacingInput.value) || 0
+  applyStyle(prop, val + 'px')
+  trackChange(prop, '', val + 'px')
+  const posClass = ['top','right','bottom','left'].find(c => activeSpacingInput.classList.contains(c)) || ''
+  const div = document.createElement('div')
+  div.className = 'zone-value ' + posClass
+  div.dataset.prop = prop
+  div.textContent = Math.round(val)
+  activeSpacingInput.replaceWith(div)
+  activeSpacingInput = null
+}
 
 btnReset.addEventListener('click', () => {
   pendingChanges = []
@@ -640,17 +703,35 @@ function renderProps(styles, hasDirectText) {
   }
   addGroup('Layout', layoutRows)
 
-  // Spacing — individual steppers
-  const spacingRows = []
-  spacingRows.push(numericRow('pad-T', 'paddingTop', styles.paddingTop, 0, 500, 1, 'px'))
-  spacingRows.push(numericRow('pad-R', 'paddingRight', styles.paddingRight, 0, 500, 1, 'px'))
-  spacingRows.push(numericRow('pad-B', 'paddingBottom', styles.paddingBottom, 0, 500, 1, 'px'))
-  spacingRows.push(numericRow('pad-L', 'paddingLeft', styles.paddingLeft, 0, 500, 1, 'px'))
-  spacingRows.push(numericRow('mrg-T', 'marginTop', styles.marginTop, -500, 500, 1, 'px'))
-  spacingRows.push(numericRow('mrg-R', 'marginRight', styles.marginRight, -500, 500, 1, 'px'))
-  spacingRows.push(numericRow('mrg-B', 'marginBottom', styles.marginBottom, -500, 500, 1, 'px'))
-  spacingRows.push(numericRow('mrg-L', 'marginLeft', styles.marginLeft, -500, 500, 1, 'px'))
-  addGroup('Spacing', spacingRows)
+  // Spacing — visual Webflow-style editor
+  const spacingGroup = document.createElement('div')
+  spacingGroup.className = 'prop-group'
+  const spacingLabel = document.createElement('div')
+  spacingLabel.className = 'prop-group-label'
+  spacingLabel.textContent = 'Spacing'
+  spacingGroup.appendChild(spacingLabel)
+
+  const diagram = document.createElement('div')
+  diagram.className = 'spacing-diagram'
+  const marginVals = { Top: styles.marginTop, Right: styles.marginRight, Bottom: styles.marginBottom, Left: styles.marginLeft }
+  const paddingVals = { Top: styles.paddingTop, Right: styles.paddingRight, Bottom: styles.paddingBottom, Left: styles.paddingLeft }
+
+  diagram.innerHTML = '<div class="spacing-zone margin-zone">' +
+    '<span class="zone-label">margin</span>' +
+    Object.entries(marginVals).map(([d, v]) =>
+      '<div class="zone-value ' + d.toLowerCase() + '" data-prop="margin' + d + '">' + Math.round(v) + '</div>'
+    ).join('') +
+    '<div class="spacing-zone padding-zone">' +
+      '<span class="zone-label">padding</span>' +
+      Object.entries(paddingVals).map(([d, v]) =>
+        '<div class="zone-value ' + d.toLowerCase() + '" data-prop="padding' + d + '">' + Math.round(v) + '</div>'
+      ).join('') +
+      '<div class="element-box"><span class="element-box-label">elemento</span></div>' +
+    '</div>' +
+  '</div>'
+
+  spacingGroup.appendChild(diagram)
+  propsPanel.appendChild(spacingGroup)
 
   // Sizing
   const sizingRows = []
@@ -875,6 +956,16 @@ function toggleInspect() {
 }
 
 fab.addEventListener('click', toggleInspect)
+
+// Mobile toggle button
+const mobileToggle = document.getElementById('mobile-toggle')
+if (mobileToggle) {
+  mobileToggle.addEventListener('click', () => {
+    toggleInspect()
+    mobileToggle.classList.toggle('active', inspecting)
+    mobileToggle.textContent = inspecting ? 'Inspeccionando' : 'Inspeccionar'
+  })
+}
 
 document.addEventListener('keydown', function (e) {
   if (e.ctrlKey && e.shiftKey && (e.key === 'X' || e.key === 'x')) {

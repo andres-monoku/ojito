@@ -31,15 +31,15 @@
     if (!active) return
     e.preventDefault()
     e.stopPropagation()
+    selectElement(e.target)
+  }
 
+  function selectElement(el) {
     if (prev) prev.style.outline = prev._ojitoPrev || ''
-
-    var el = e.target
     el._ojitoPrev = el.style.outline
-    el.style.outline = '2px solid #5b9cf6'
+    el.style.outline = '2px solid #e8b86d'
     prev = el
 
-    // Collect children (max 10)
     var children = []
     var kids = el.children
     var max = Math.min(kids.length, 10)
@@ -50,7 +50,6 @@
     var elData = getElementData(el, 50)
     elData.xpath = getXPath(el)
 
-    // Computed styles
     var computed = window.getComputedStyle(el)
     var v = function(p) { return computed.getPropertyValue(p).trim() }
     var n = function(p) { return parseFloat(v(p)) || 0 }
@@ -152,4 +151,14 @@
   document.addEventListener('mouseover', onHover, true)
   document.addEventListener('mouseout', onHoverOut, true)
   document.addEventListener('click', onClick, true)
+
+  // Mobile touch selection
+  document.addEventListener('touchend', function (e) {
+    if (!active) return
+    e.preventDefault()
+    e.stopPropagation()
+    var touch = e.changedTouches[0]
+    var el = document.elementFromPoint(touch.clientX, touch.clientY)
+    if (el) selectElement(el)
+  }, { capture: true, passive: false })
 })()
