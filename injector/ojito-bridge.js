@@ -171,7 +171,16 @@
       var target = getElementByXpath(e.data.xpath)
       if (!target) { console.warn('Ojito: element not found for', e.data.xpath); return }
       var cssProp = e.data.property.replace(/([A-Z])/g, '-$1').toLowerCase()
+      // Apply to the target element
       target.style.setProperty(cssProp, e.data.value, 'important')
+      // Also apply to all elements with the same class for consistency
+      var cls = typeof target.className === 'string' ? target.className.split(/\s+/)[0] : ''
+      if (cls && !cls.startsWith('ojito')) {
+        var siblings = document.querySelectorAll('.' + CSS.escape(cls))
+        for (var si = 0; si < siblings.length; si++) {
+          siblings[si].style.setProperty(cssProp, e.data.value, 'important')
+        }
+      }
       return
     }
     if (e.data.type === 'ojito-get-context') {

@@ -133,15 +133,26 @@ function InlineNum({ label, value, unit = 'px', prop, onChange }) {
 }
 
 export default function LayoutGroup({ styles, onChange }) {
+  const [local, setLocal] = useState({})
+
+  // Reset local overrides when a new element is selected
+  useEffect(() => { setLocal({}) }, [styles?.display, styles?.flexDirection])
+
   if (!styles) return null
 
-  const display = styles.display || 'block'
+  // Local state takes priority over styles prop
+  const display = local.display ?? styles.display ?? 'block'
   const isFlex = display === 'flex' || display === 'inline-flex'
-  const direction = styles.flexDirection || 'row'
-  const justify = styles.justifyContent || 'flex-start'
-  const align = styles.alignItems || 'stretch'
-  const wrap = styles.flexWrap || 'nowrap'
-  const gap = parseFloat(styles.gap) || 0
+  const direction = local.flexDirection ?? styles.flexDirection ?? 'row'
+  const justify = local.justifyContent ?? styles.justifyContent ?? 'flex-start'
+  const align = local.alignItems ?? styles.alignItems ?? 'stretch'
+  const wrap = local.flexWrap ?? styles.flexWrap ?? 'nowrap'
+  const gap = parseFloat(local.gap ?? styles.gap) || 0
+
+  function handleChange(prop, value) {
+    setLocal(prev => ({ ...prev, [prop]: value }))
+    onChange?.(prop, value)
+  }
 
   return (
     <div style={s.group}>
@@ -152,7 +163,7 @@ export default function LayoutGroup({ styles, onChange }) {
         <div style={s.btnGroup}>
           {DISPLAY_OPTIONS.map(d => (
             <button key={d.id} style={s.btn(display === d.id || (d.id === 'flex' && display === 'inline-flex'))}
-              title={d.label} onClick={() => onChange?.('display', d.id)}>
+              title={d.label} onClick={() => handleChange('display', d.id)}>
               {d.icon}
             </button>
           ))}
@@ -167,7 +178,7 @@ export default function LayoutGroup({ styles, onChange }) {
             <div style={{ display: 'flex', gap: '2px' }}>
               {DIRECTION_OPTIONS.map(d => (
                 <button key={d.id} style={s.smBtn(direction === d.id)}
-                  title={d.id} onClick={() => onChange?.('flexDirection', d.id)}>
+                  title={d.id} onClick={() => handleChange('flexDirection', d.id)}>
                   {d.icon}
                 </button>
               ))}
@@ -175,7 +186,7 @@ export default function LayoutGroup({ styles, onChange }) {
             <div style={{ marginLeft: 'auto', display: 'flex', gap: '2px' }}>
               {WRAP_OPTIONS.map(w => (
                 <button key={w.id} style={{ ...s.btn(wrap === w.id), flex: 'none', padding: '0 8px', fontSize: '9px' }}
-                  onClick={() => onChange?.('flexWrap', w.id)}>
+                  onClick={() => handleChange('flexWrap', w.id)}>
                   {w.label}
                 </button>
               ))}
@@ -188,7 +199,7 @@ export default function LayoutGroup({ styles, onChange }) {
             <div style={s.btnGroup}>
               {JUSTIFY_OPTIONS.map(j => (
                 <button key={j.id} style={s.smBtn(justify === j.id)}
-                  title={j.id} onClick={() => onChange?.('justifyContent', j.id)}>
+                  title={j.id} onClick={() => handleChange('justifyContent', j.id)}>
                   <span style={{ fontSize: '9px', letterSpacing: '-1px' }}>{j.icon}</span>
                 </button>
               ))}
@@ -200,7 +211,7 @@ export default function LayoutGroup({ styles, onChange }) {
             <div style={s.btnGroup}>
               {ALIGN_OPTIONS.map((a, i) => (
                 <button key={a.id + i} style={s.smBtn(align === a.id)}
-                  title={a.id} onClick={() => onChange?.('alignItems', a.id)}>
+                  title={a.id} onClick={() => handleChange('alignItems', a.id)}>
                   {a.icon}
                 </button>
               ))}
@@ -210,7 +221,7 @@ export default function LayoutGroup({ styles, onChange }) {
           {/* Gap */}
           <div style={s.row}>
             <span style={s.wideLabel}>gap</span>
-            <InlineNum label="" value={gap} unit="px" prop="gap" onChange={onChange} />
+            <InlineNum label="" value={gap} unit="px" prop="gap" onChange={handleChange} />
             <span style={s.unit}>px</span>
           </div>
         </>
@@ -222,11 +233,11 @@ export default function LayoutGroup({ styles, onChange }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <div style={s.row}>
           <span style={{ ...s.label, minWidth: '14px', fontWeight: 600 }}>W</span>
-          <SizingControl prop="width" rawValue={styles._rawWidth} computedValue={styles.width} onChange={onChange} />
+          <SizingControl prop="width" rawValue={styles._rawWidth} computedValue={styles.width} onChange={handleChange} />
         </div>
         <div style={s.row}>
           <span style={{ ...s.label, minWidth: '14px', fontWeight: 600 }}>H</span>
-          <SizingControl prop="height" rawValue={styles._rawHeight} computedValue={styles.height} onChange={onChange} />
+          <SizingControl prop="height" rawValue={styles._rawHeight} computedValue={styles.height} onChange={handleChange} />
         </div>
       </div>
     </div>
